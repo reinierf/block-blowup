@@ -98,7 +98,7 @@ describe('Game: placement', () => {
     expect(r.cols).toEqual([]);
     expect(r.lines).toBe(1);
     expect(r.combo).toBe(1);
-    expect(r.points).toBe(2 + 10);
+    expect(r.points).toBe(2 + 40);
     expect(r.allClear).toBe(false);
     expect(r.praise).toBeNull();
     expect(r.clearedCells).toHaveLength(8);
@@ -129,11 +129,11 @@ describe('Game: placement', () => {
     expect(r.clearedCells).toHaveLength(15);
     expect(r.praise).toBe('Good');
     expect(r.allClear).toBe(true);
-    expect(r.points).toBe(1 + 40 + 300);
+    expect(r.points).toBe(1 + 80 + 600);
     expect(g.board.isEmpty()).toBe(true);
   });
 
-  it('scores a 6-line clear from the extended line table', () => {
+  it('scores a 6-line clear from the line table', () => {
     // Rows 0–2 and columns 0–2 are full except the top-left 3×3 square, so a square3 at
     // (0, 0) completes 3 rows and 3 columns at once.
     const rows = [
@@ -151,7 +151,7 @@ describe('Game: placement', () => {
     expect(r.lines).toBe(6);
     expect(r.praise).toBe('Amazing');
     expect(r.allClear).toBe(true);
-    expect(r.points).toBe(9 + 360 + 300);
+    expect(r.points).toBe(9 + 1200 + 600);
     expect(g.board.isEmpty()).toBe(true);
   });
 
@@ -168,9 +168,9 @@ describe('Game: placement', () => {
     ];
     const g = setup(rows, ['single', 'single', 'single']);
     const r1 = g.placeAt(0, 0, 0)!;
-    expect([r1.combo, r1.allClear, r1.points]).toEqual([1, false, 1 + 10]);
+    expect([r1.combo, r1.allClear, r1.points]).toEqual([1, false, 1 + 40]);
     const r2 = g.placeAt(1, 0, 7)!;
-    expect([r2.combo, r2.allClear, r2.points]).toEqual([2, true, 1 + 15 + 450]);
+    expect([r2.combo, r2.allClear, r2.points]).toEqual([2, true, 1 + 60 + 900]);
   });
 });
 
@@ -195,9 +195,9 @@ describe('Game: combo with a grace window (COMBO_GRACE = 3)', () => {
 
   it('builds on consecutive clears', () => {
     const g = setup(rows, []);
-    expect(single(g, 0, 0)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 10 });
-    expect(single(g, 0, 1)).toEqual({ combo: 2, movesSinceClear: 0, points: 1 + 15 });
-    expect(single(g, 0, 2)).toEqual({ combo: 3, movesSinceClear: 0, points: 1 + 20 });
+    expect(single(g, 0, 0)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 40 });
+    expect(single(g, 0, 1)).toEqual({ combo: 2, movesSinceClear: 0, points: 1 + 60 });
+    expect(single(g, 0, 2)).toEqual({ combo: 3, movesSinceClear: 0, points: 1 + 80 });
     expect(g.bestCombo).toBe(3);
   });
 
@@ -208,7 +208,7 @@ describe('Game: combo with a grace window (COMBO_GRACE = 3)', () => {
     single(g, 0, 2);
     expect(single(g, 4, 5)).toEqual({ combo: 3, movesSinceClear: 1, points: 1 });
     expect(single(g, 5, 5)).toEqual({ combo: 3, movesSinceClear: 2, points: 1 });
-    expect(single(g, 0, 3)).toEqual({ combo: 4, movesSinceClear: 0, points: 1 + 25 });
+    expect(single(g, 0, 3)).toEqual({ combo: 4, movesSinceClear: 0, points: 1 + 100 });
     expect(g.bestCombo).toBe(4);
   });
 
@@ -221,7 +221,7 @@ describe('Game: combo with a grace window (COMBO_GRACE = 3)', () => {
     expect(single(g, 6, 6)).toEqual({ combo: 0, movesSinceClear: 3, points: 1 });
     expect(single(g, 7, 6)).toEqual({ combo: 0, movesSinceClear: 4, points: 1 });
     // The next clear starts a new streak at 1.
-    expect(single(g, 0, 2)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 10 });
+    expect(single(g, 0, 2)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 40 });
     expect(g.bestCombo).toBe(2);
   });
 });
@@ -309,7 +309,7 @@ describe('Game: hand refill and game over', () => {
     const r = g.placeAt(2, 4, 0)!;
     expect(r.deal).toBe(g.lastDeal);
     expect(r.deal).toMatchObject({ requireSolvable: true, solvable: true, mercy: false });
-    expect(r.deal!.difficulty).toBeCloseTo(0.0012); // score 3 on the difficulty curve
+    expect(r.deal!.difficulty).toBeCloseTo(0.0004); // score 3 on the difficulty curve
   });
 
   it('counts hands in a row without a clear, for the mercy rule', () => {

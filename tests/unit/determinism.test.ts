@@ -21,7 +21,7 @@ describe('determinism', () => {
       {
         "bestCombo": 9,
         "moves": 62,
-        "score": 849,
+        "score": 2564,
       }
     `);
   });

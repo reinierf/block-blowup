@@ -58,7 +58,7 @@ Every number below lives in `src/game/config.ts`.
   app uses `Mulberry32` (`src/game/rng.ts`) seeded from `crypto.getRandomValues`; its
   state is a single uint32, so a game can be saved and replayed exactly.
 - **Difficulty** is a value 0–1 from the score, piecewise linear through
-  `DIFFICULTY_CURVE`: 0 → 0, 500 → 0.2, 1500 → 0.45, 3000 → 0.7, 6000+ → 1
+  `DIFFICULTY_CURVE`: 0 → 0, 1500 → 0.2, 4500 → 0.45, 9000 → 0.7, 18000+ → 1
   (`difficultyFor` in `src/game/difficulty.ts`).
 - **Weights per shape family** (`FAMILY_WEIGHTS`, easy → hard, linear in difficulty). A
   family's weight is split equally between its orientations. The 1×1 single is rare early
@@ -117,24 +117,26 @@ Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
 
    ```
    base = LINE_POINTS[lines]        // lines capped at the table length
-   points = round(base * comboMultiplier)
+   points = base * comboMultiplier
    ```
 
-   `LINE_POINTS = [0, 10, 40, 90, 160, 250, 360, 490]`
-   → 1 line = 10, 2 = 40, 3 = 90, 4 = 160, 5 = 250, 6 = 360, 7+ = 490. Clearing more at
-   once is super-linear. (With the current shapes a single move can clear at most 6 lines.)
+   `LINE_POINTS = [0, 20, 40, 120, 240, 400, 600, 840]`
+   → 1 line = 20, 2 = 40, 3 = 120, 4 = 240, 5 = 400, 6 = 600, 7+ = 840. 1 and 2 lines are
+   20 per line, as measured in the original (see below); from 3 lines up the table is
+   `20 × lines × (lines − 1)`, so bigger clears earn extra. (With the current shapes a
+   single move can clear at most 6 lines.)
 
-3. **Combo multiplier** — `comboMultiplier(combo) = min(5, 1 + 0.5 * (combo - 1))`
+3. **Combo multiplier** — `comboMultiplier(combo) = combo + 1`, with no cap.
 
-   ×1 for the first clear, +0.5 per further clear in the streak, capped at
-   `COMBO_MULT_CAP` (×5, reached at combo 9).
+   ×2 for the first clear, +1 per further clear in the streak. A single-line clear pays
+   40, 60, 80, … and at combo 20 it pays 420.
 
    The combo counter increments on every placement that clears at least one line. A
    placement that clears nothing does **not** break the streak straight away: the game
    counts misses in `movesSinceClear`, and the combo resets to 0 only when that reaches
    `COMBO_GRACE` (3), i.e. on the third non-clearing placement in a row. Any clear resets
    `movesSinceClear` to 0. So:
-   - Clear, miss, miss, clear → the second clear is combo 2 (×1.5).
+   - Clear, miss, miss, clear → the second clear is combo 2 (×3).
    - Clear, miss, miss, miss → combo back to 0; the next clear starts again at 1.
 
    The streak therefore survives roughly one hand without a clear, like the original.
@@ -142,12 +144,12 @@ Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
    `movesSinceClear` are reported in every turn result.
 
 4. **Board-clear bonus** — when a clearing move leaves the board completely empty, it
-   also earns `round(ALL_CLEAR_BONUS × comboMultiplier)` with `ALL_CLEAR_BONUS = 300`, and
+   also earns `ALL_CLEAR_BONUS × comboMultiplier` with `ALL_CLEAR_BONUS = 300`, and
    the turn result has `allClear: true`.
 
 5. **Praise** — every turn result carries a `praise` word for multi-line clears:
    2 lines → "Good", 3 → "Great", 4 → "Excellent", 5+ → "Amazing" (`PRAISE_BY_LINES`);
-   `null` otherwise. The renderer will show it in Phase 6, together with "Combo ×N".
+   `null` otherwise. The renderer will show it in Phase 6, together with "Combo N".
 
 Total points for a move = placement + line-clear + board-clear bonus. The turn result
 (`TurnResult` in `src/game/state.ts`) reports the placed and cleared cells, rows, cols,
@@ -156,7 +158,14 @@ renderers drive all effects from it and never recompute rules.
 
 ### Tuning choices (taste; easy to change in `config.ts`)
 
-- Combo multiplier capped at ×5 so very long streaks don't dwarf everything else.
+- Line and combo scoring follow the original as measured from a 3-minute recording (one
+  unbroken streak, combo 1–24): every readable 1- and 2-line clear that fit a rule matched
+  `20 × lines × (combo + 1)` (11 of 18 clears). The others paid more (about ×1.5–2), for
+  reasons we couldn't identify; they are not modelled. Long streaks dominate the score, as
+  in the original.
+- The 3+ line values are partly our choice: the one 3-line clear in the recording fits 120
+  if it was combo 16 (its combo number wasn't shown). Larger clears are extrapolated.
+- The all-clear bonus (300 × multiplier) is our own guess; the recording had no board clear.
 - Praise words and thresholds as above. Single-line clears get no word.
 - Generator: the difficulty curve, family weights, `P_SOLVABLE_HARD` = 0.7,
   `MERCY_FILL` = 0.6, `MERCY_HANDS` = 2, `MERCY_BOOST` = 4.
@@ -255,7 +264,7 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 - **Clear:** cleared cells flash and shrink, particles burst
   (3 per cell, 1 with reduced motion). A popup rises from the **centre of the cleared
   cells** (kept inside the board): the praise word ("Good" / "Great" / "Excellent" /
-  "Amazing" for 2 / 3 / 4 / 5+ lines, from the turn result), `+points`, and "Combo ×N" from
+  "Amazing" for 2 / 3 / 4 / 5+ lines, from the turn result), `+points`, and "Combo N" from
   combo 2.
 - **Screen shake** for clears of 2+ lines: amplitude 3 px + 3 px per extra line, capped
   at 12 px, decaying over 0.35 s. Off with reduced motion.

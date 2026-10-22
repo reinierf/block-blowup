@@ -20,7 +20,7 @@ export function placementPoints(shape: Shape): number {
 
 /**
  * Multiplier applied to a clear, based on the current combo streak.
- * combo is the count of clearing placements in the current streak (1 = first clear, no bonus).
+ * combo is the count of clearing placements in the current streak (1 = first clear, ×2).
  */
 export function comboMultiplier(combo: number): number {
   return comboMultiplierFor(combo);
@@ -29,7 +29,7 @@ export function comboMultiplier(combo: number): number {
 /** Points awarded for clearing `lines` lines while on combo streak `combo`. */
 export function lineClearPoints(lines: number, combo: number): number {
   const base = LINE_POINTS[Math.min(lines, LINE_POINTS.length - 1)]!;
-  return Math.round(base * comboMultiplier(combo));
+  return base * comboMultiplier(combo);
 }
 
 /** Bonus for emptying the whole board while on combo streak `combo`. */

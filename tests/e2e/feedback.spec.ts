@@ -12,12 +12,12 @@ test('a seeded line clear and combo: popup, praise, combo badge, sounds', async 
 
   const fb = (await lastFeedback(page))!;
   expect(fb.popup).not.toBeNull();
-  expect(fb.popup!.combo).toBe(`Combo ×${snap.combo}`);
+  expect(fb.popup!.combo).toBe(`Combo ${snap.combo}`);
   expect(fb.popup!.points).toMatch(/^\+\d+$/);
   expect(fb.sounds).toContainEqual({ kind: 'clear', lines: expect.any(Number), combo: snap.combo });
 
   await expect(page.locator('#combo-wrap')).toBeVisible();
-  await expect(page.locator('#combo')).toHaveText(`Combo ×${snap.combo}`);
+  await expect(page.locator('#combo')).toHaveText(`Combo ${snap.combo}`);
   await expect(page.locator('#score')).toHaveText(String(snap.score));
 });
 

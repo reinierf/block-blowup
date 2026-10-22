@@ -8,10 +8,13 @@ import type { ShapeFamily } from './pieces';
 export const PLACE_POINTS_PER_CELL = 1;
 
 /**
- * Base points for clearing N lines in one move (index = lines cleared).
- * Moves that clear more lines than the table covers use the last entry.
+ * Base points for clearing N lines in one move (index = lines cleared), before the combo
+ * multiplier. Moves that clear more lines than the table covers use the last entry.
+ * 1 and 2 lines match the original (20 per line); from 3 lines up a clear pays
+ * 20 × lines × (lines − 1), so bigger clears earn extra. The one 3-line clear measured in
+ * the original fits 120.
  */
-export const LINE_POINTS: readonly number[] = [0, 10, 40, 90, 160, 250, 360, 490];
+export const LINE_POINTS: readonly number[] = [0, 20, 40, 120, 240, 400, 600, 840];
 
 /**
  * Placements in a row without a clear before the combo resets. With 3, the streak survives
@@ -19,12 +22,12 @@ export const LINE_POINTS: readonly number[] = [0, 10, 40, 90, 160, 250, 360, 490
  */
 export const COMBO_GRACE = 3;
 
-/** Highest combo multiplier (reached at combo 9 with the formula below). */
-export const COMBO_MULT_CAP = 5;
-
-/** Combo multiplier for a clear on combo streak `combo` (1 = first clear, no bonus). */
+/**
+ * Combo multiplier for a clear on combo streak `combo` (1 = first clear): combo + 1, with
+ * no cap, as measured in the original (seen up to combo 24).
+ */
 export function comboMultiplierFor(combo: number): number {
-  return Math.min(COMBO_MULT_CAP, 1 + 0.5 * Math.max(0, combo - 1));
+  return Math.max(0, combo) + 1;
 }
 
 /** Bonus for a move that leaves the board completely empty, × the combo multiplier. */
@@ -46,13 +49,15 @@ export const PRAISE_BY_LINES: readonly { minLines: number; word: string }[] = [
 /**
  * Difficulty (0–1) as a piecewise-linear function of score: [score, difficulty] points,
  * ascending. Below the first point difficulty is 0; above the last it is 1.
+ * Scaled ×3 when scoring moved to the measured combo formula (scores grew about 3×), which
+ * keeps difficulty by move in the simulation where it was.
  */
 export const DIFFICULTY_CURVE: readonly (readonly [score: number, difficulty: number])[] = [
   [0, 0],
-  [500, 0.2],
-  [1500, 0.45],
-  [3000, 0.7],
-  [6000, 1],
+  [1500, 0.2],
+  [4500, 0.45],
+  [9000, 0.7],
+  [18000, 1],
 ];
 
 /**

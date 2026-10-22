@@ -47,7 +47,7 @@ describe('feedbackFor', () => {
       result({ clearedCells: row7, lines: 3, combo: 4, praise: 'Great', points: 200 }),
       motion,
     );
-    expect(p.popup).toMatchObject({ praise: 'Great', combo: 'Combo ×4' });
+    expect(p.popup).toMatchObject({ praise: 'Great', combo: 'Combo 4' });
   });
 
   it('shakes for 2+ lines, scaling with lines and capped', () => {
@@ -100,6 +100,6 @@ describe('feedbackFor', () => {
 
 describe('comboText', () => {
   it('starts at combo 2', () => {
-    expect([0, 1, 2, 7].map(comboText)).toEqual([null, null, 'Combo ×2', 'Combo ×7']);
+    expect([0, 1, 2, 7].map(comboText)).toEqual([null, null, 'Combo 2', 'Combo 7']);
   });
 });

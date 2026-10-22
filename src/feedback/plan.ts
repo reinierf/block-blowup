@@ -6,7 +6,7 @@
 import type { TurnResult } from '../game/state';
 
 export const FEEDBACK = {
-  /** Show "Combo ×N" from this combo up. */
+  /** Show "Combo N" from this combo up. */
   comboTextFrom: 2,
   /** Screen shake amplitude (CSS px) per line beyond the first; none for 1-line clears. */
   shakePerExtraLine: 3,
@@ -52,7 +52,7 @@ export interface FeedbackPlan {
 }
 
 export function comboText(combo: number): string | null {
-  return combo >= FEEDBACK.comboTextFrom ? `Combo ×${combo}` : null;
+  return combo >= FEEDBACK.comboTextFrom ? `Combo ${combo}` : null;
 }
 
 export function feedbackFor(result: TurnResult, opts: { reduceMotion: boolean }): FeedbackPlan {

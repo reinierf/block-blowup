@@ -6,8 +6,8 @@ import { difficultyFor, pSolvable } from '../../src/game/difficulty';
 describe('difficultyFor', () => {
   it('hits every point of the curve and interpolates between them', () => {
     for (const [score, d] of DIFFICULTY_CURVE) expect(difficultyFor(score)).toBeCloseTo(d);
-    expect(difficultyFor(250)).toBeCloseTo(0.1);
-    expect(difficultyFor(1000)).toBeCloseTo(0.325);
+    expect(difficultyFor(750)).toBeCloseTo(0.1);
+    expect(difficultyFor(3000)).toBeCloseTo(0.325);
   });
 
   it('clamps below and above the curve', () => {

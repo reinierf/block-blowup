@@ -226,7 +226,7 @@ function handlePlace(result: TurnResult): void {
 function updateHud(): void {
   bestEl.textContent = String(Math.max(highScore, game.score));
   comboWrap.hidden = game.combo < 2;
-  comboEl.textContent = `Combo ×${game.combo}`;
+  comboEl.textContent = `Combo ${game.combo}`;
 }
 
 /** Count the HUD score up towards the real score (about 0.4 s for any jump). */
