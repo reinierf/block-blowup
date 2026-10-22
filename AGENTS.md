@@ -11,10 +11,11 @@ For **personal use only**. Forked from the MIT-licensed
 
 - **Stack:** TypeScript (strict) + Vite + Vitest + Playwright. PixiJS (WebGL) renderer
   from Phase 4; `vite-plugin-pwa` from Phase 7. No UI frameworks, no game engines.
-- **Repo:** <https://github.com/reinierf/block-blast> (the name `block-blowup` is used for
-  the package name and storage-key prefix only).
+- **Repo:** <https://github.com/reinierf/block-blowup> (a GitHub fork of SSWheatley/block_blast,
+  renamed from `block-blast`). Live at <https://reinierf.github.io/block-blowup/>.
 - **Deploys** to GitHub Pages from `main`, only when every CI job is green. Vite's `base`
-  is `/block-blast/` for builds.
+  is `/block-blowup/` for builds and `vite preview` (`PAGES_BASE` in `vite.config.ts`; keep
+  it equal to the repo name, as are the URLs in `lighthouserc.json` and the `pwa` project).
 
 ## Commands
 
@@ -116,7 +117,7 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 ## Environment notes (this machine)
 
-- Windows 11; Node 22. `origin` → `git@github.com:reinierf/block-blast.git`, branch `main`.
+- Windows 11; Node 22. `origin` → `git@github.com:reinierf/block-blowup.git`, branch `main`.
 - `gh` is authenticated as `reinierf`.
 - AVG Antivirus intercepts TLS; Node trusts it via `NODE_EXTRA_CA_CERTS`, and
   `scripts/docker-playwright.mjs` passes that certificate into the container.

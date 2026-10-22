@@ -52,7 +52,7 @@ test('the manifest has the required fields and its icons load', async ({ page, r
 test('the service worker registers and controls the page', async ({ page }) => {
   await openControlled(page);
   const script = await page.evaluate(() => navigator.serviceWorker.controller!.scriptURL);
-  expect(script).toMatch(/\/block-blast\/sw\.js$/);
+  expect(script).toMatch(/\/block-blowup\/sw\.js$/);
 });
 
 test('works offline: reload and play', async ({ page, context }) => {

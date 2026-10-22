@@ -3,7 +3,7 @@
     "collect": {
       "startServerCommand": "npx vite preview --port 4175 --strictPort",
       "startServerReadyPattern": "Local",
-      "url": ["http://localhost:4175/block-blast/"],
+      "url": ["http://localhost:4175/block-blowup/"],
       "numberOfRuns": 1,
       "settings": {
         "chromeFlags": "--no-sandbox --headless=new"

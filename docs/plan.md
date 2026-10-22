@@ -16,7 +16,8 @@ This file tracks progress against those phases and records decisions made along 
 
 ## Phase 0 notes
 
-- Repo stays at `reinierf/block-blast` (GitHub fork of SSWheatley/block_blast). The name
+- Repo was `reinierf/block-blast` (GitHub fork of SSWheatley/block_blast), since renamed to
+  `reinierf/block-blowup` with Pages base `/block-blowup/`. The name
   `block-blowup` is used for the package name and storage-key prefix.
 - Sources converted one-for-one to strict TypeScript. No behaviour changes, except that
   `Game` now requires an `rng` (the caller passes it; `main.ts` uses `Math.random` until

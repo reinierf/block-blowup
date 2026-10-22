@@ -38,7 +38,7 @@ export default defineConfig({
     {
       name: 'pwa',
       testDir: 'tests/pwa',
-      use: { ...devices['Pixel 7'], baseURL: `http://localhost:${PWA_PORT}/block-blast/` },
+      use: { ...devices['Pixel 7'], baseURL: `http://localhost:${PWA_PORT}/block-blowup/` },
     },
     ...(visual
       ? [{ name: 'visual', testDir: 'tests/visual', use: { ...devices['Pixel 7'] } }]
@@ -64,7 +64,7 @@ export default defineConfig({
       command:
         `npx vite build --mode test --outDir ${PWA_DIST} --emptyOutDir && ` +
         `npx vite preview --outDir ${PWA_DIST} --port ${PWA_PORT} --strictPort`,
-      url: `http://localhost:${PWA_PORT}/block-blast/`,
+      url: `http://localhost:${PWA_PORT}/block-blowup/`,
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
     },

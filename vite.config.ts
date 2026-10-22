@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { theme } from './src/render/theme';
 
 // GitHub Pages serves the site from /<repo>/, so production builds need that base path.
-const PAGES_BASE = '/block-blast/';
+const PAGES_BASE = '/block-blowup/';
 
 export default defineConfig(({ command, isPreview }) => ({
   // `vite preview` serves a build, so it needs the same base path.
