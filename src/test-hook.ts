@@ -39,17 +39,18 @@ declare global {
 }
 
 export function installTestHook(deps: {
-  game: Game;
-  seed: number;
+  getGame: () => Game;
+  getSeed: () => number;
   getLayout: () => Layout | null;
   frameCosts: number[];
   getFeedback: () => FeedbackPlan | null;
 }): void {
-  const { game, seed, getLayout, frameCosts, getFeedback } = deps;
+  const { getGame, getSeed, getLayout, frameCosts, getFeedback } = deps;
   const hook: BlowupTestHook = {
-    snapshot: () =>
-      structuredClone({
-        seed,
+    snapshot: () => {
+      const game = getGame();
+      return structuredClone({
+        seed: getSeed(),
         score: game.score,
         combo: game.combo,
         status: game.status,
@@ -67,7 +68,8 @@ export function installTestHook(deps: {
         ),
         fits: game.hand.map((_, i) => game.pieceFits(i)),
         lastDeal: game.lastDeal,
-      }),
+      });
+    },
     layout: () => structuredClone(getLayout()),
     takeFrameCosts: () => frameCosts.splice(0),
     lastFeedback: () => structuredClone(getFeedback()),

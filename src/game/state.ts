@@ -5,8 +5,9 @@
 import { Board, type LinePreview } from './board';
 import { rowsFromBoard } from './bitboard';
 import { Generator, type DealInfo } from './generator';
-import type { Shape } from './pieces';
+import { SHAPES, type Shape } from './pieces';
 import type { Rng } from './rng';
+import type { GameState } from './save';
 import { COMBO_GRACE } from './config';
 import { allClearPoints, lineClearPoints, placementPoints, praiseFor } from './scoring';
 
@@ -53,6 +54,8 @@ export interface TurnResult {
 export interface GameOptions {
   size?: number;
   rng: Rng;
+  /** Continue from a saved state instead of starting a new game (see save.ts). */
+  initial?: GameState;
 }
 
 let uidCounter = 0;
@@ -77,12 +80,31 @@ export class Game {
   lastDeal: DealInfo | null = null;
   status: GameStatus = GameStatus.PLAYING;
 
-  constructor({ size = 8, rng }: GameOptions) {
+  constructor({ size = 8, rng, initial }: GameOptions) {
     this.size = size;
     this.rng = rng;
     this.board = new Board(size);
     this.generator = new Generator(rng);
-    this.reset();
+    if (initial) this.load(initial);
+    else this.reset();
+  }
+
+  /** Take over a saved state. Draws nothing from the RNG. */
+  private load(state: GameState): void {
+    this.board.grid = state.board.map((row) => [...row]);
+    this.hand = state.hand.map((p) =>
+      p
+        ? { uid: ++uidCounter, shape: SHAPES.find((s) => s.name === p.shape)!, color: p.color }
+        : null,
+    );
+    this.score = state.score;
+    this.combo = state.combo;
+    this.movesSinceClear = state.movesSinceClear;
+    this.bestCombo = state.bestCombo;
+    this.handsWithoutClear = state.handsWithoutClear;
+    this.handHadClear = state.handHadClear;
+    this.status = state.status;
+    this.lastDeal = null;
   }
 
   reset(): void {

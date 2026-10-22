@@ -8,51 +8,93 @@
       name="description"
       content="Block Blowup: drag blocks, clear lines, beat your high score."
     />
+    <!-- Installed as a standalone app on iOS ("Add to Home Screen"). -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Blowup" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>Block Blowup</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div id="stage"></div>
-    <div id="safe-probe" aria-hidden="true"></div>
+    <main>
+      <div id="stage"></div>
+      <div id="safe-probe" aria-hidden="true"></div>
 
-    <header id="hud">
-      <div class="hud-item">
-        <span class="hud-label">Score</span>
-        <span id="score">0</span>
-      </div>
-      <div class="hud-item combo" id="combo-wrap" hidden>
-        <span id="combo">Combo ×1</span>
-      </div>
-      <div class="hud-item">
-        <span class="hud-label">Best</span>
-        <span id="best">0</span>
-      </div>
-      <button
-        id="mute"
-        class="icon-button"
-        type="button"
-        aria-pressed="false"
-        aria-label="Sound on"
-      >
-        <svg class="icon-on" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 9h4l5-4v14l-5-4H4z" />
-          <path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" />
-        </svg>
-        <svg class="icon-off" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M4 9h4l5-4v14l-5-4H4z" />
-          <path class="wave" d="M16.5 9.5l5 5M21.5 9.5l-5 5" />
-        </svg>
-      </button>
-    </header>
+      <header id="hud">
+        <div class="hud-item">
+          <span class="hud-label">Score</span>
+          <span id="score">0</span>
+        </div>
+        <div class="hud-item combo" id="combo-wrap" hidden>
+          <span id="combo">Combo ×1</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">Best</span>
+          <span id="best">0</span>
+        </div>
+        <button id="open-settings" class="icon-button" type="button" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+              transform="translate(-1 0)"
+            />
+          </svg>
+        </button>
+      </header>
 
-    <div id="overlay" class="overlay" hidden>
-      <div class="overlay-card">
-        <h1 id="overlay-title">Game Over</h1>
-        <p id="new-best" class="new-best" hidden>New best!</p>
-        <p id="overlay-msg"></p>
-        <button id="restart" type="button">Play again</button>
+      <!-- Visible before any script runs, so the first paint is the start screen. -->
+      <section id="start" class="screen" aria-labelledby="start-title">
+        <div class="screen-card">
+          <h1 id="start-title" class="title">Block Blowup</h1>
+          <p class="best-line">Best <span id="start-best">0</span></p>
+          <button id="continue" type="button" hidden>Continue</button>
+          <button id="play" type="button">Play</button>
+          <button id="start-settings" class="secondary" type="button">Settings</button>
+        </div>
+      </section>
+
+      <section id="settings" class="screen" role="dialog" aria-labelledby="settings-title" hidden>
+        <div class="screen-card">
+          <h2 id="settings-title">Settings</h2>
+          <label class="toggle">
+            <span>Sound</span>
+            <input id="set-sound" type="checkbox" role="switch" />
+          </label>
+          <label class="toggle">
+            <span>Vibration</span>
+            <input id="set-haptics" type="checkbox" role="switch" />
+          </label>
+          <p id="haptics-note" class="note" hidden>This device can't vibrate.</p>
+          <fieldset class="segmented">
+            <legend>Reduce motion</legend>
+            <label><input type="radio" name="motion" value="system" /><span>System</span></label>
+            <label><input type="radio" name="motion" value="on" /><span>On</span></label>
+            <label><input type="radio" name="motion" value="off" /><span>Off</span></label>
+          </fieldset>
+          <button id="settings-done" type="button">Done</button>
+        </div>
+      </section>
+
+      <section id="overlay" class="screen" aria-labelledby="overlay-title" hidden>
+        <div class="screen-card">
+          <h2 id="overlay-title">Game Over</h2>
+          <p id="new-best" class="new-best" hidden>New best!</p>
+          <p id="overlay-msg"></p>
+          <button id="restart" type="button">Play again</button>
+          <button id="to-menu" class="secondary" type="button">Menu</button>
+        </div>
+      </section>
+
+      <div id="update" class="toast" role="status" hidden>
+        <span>Update available</span>
+        <button id="update-reload" type="button">Reload</button>
       </div>
-    </div>
+
+      <pre id="debug" aria-hidden="true" hidden></pre>
+    </main>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

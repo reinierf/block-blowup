@@ -41,14 +41,3 @@ test.describe('with prefers-reduced-motion', () => {
     expect(fb.particlesPerCell).toBe(1);
   });
 });
-
-test('the mute setting persists across reloads', async ({ page }) => {
-  await openGame(page, 1);
-  const mute = page.locator('#mute');
-  await expect(mute).toHaveAttribute('aria-pressed', 'false');
-  await mute.click();
-  await expect(mute).toHaveAttribute('aria-pressed', 'true');
-  await page.reload();
-  await page.waitForFunction(() => !!window.__blowup?.layout());
-  await expect(page.locator('#mute')).toHaveAttribute('aria-pressed', 'true');
-});

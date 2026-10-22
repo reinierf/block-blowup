@@ -4,7 +4,9 @@ import {
   dragToCell,
   firstFit,
   holdOverCell,
+  openApp,
   openGame,
+  openNearlyOver,
   playFirstFit,
   snapshot,
 } from '../e2e/helpers';
@@ -49,4 +51,23 @@ test('greyed-out tray piece', async ({ page }) => {
   await openGame(page, 298);
   await playFirstFit(page, 10);
   await expect(page).toHaveScreenshot('greyed-out-piece.png');
+});
+
+test('start screen', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('block-blowup.highscore', '1234'));
+  await openApp(page, 1);
+  await expect(page).toHaveScreenshot('start-screen.png');
+});
+
+test('settings screen', async ({ page }) => {
+  await openApp(page, 1);
+  await page.click('#start-settings');
+  await expect(page).toHaveScreenshot('settings-screen.png');
+});
+
+test('game over with a new best', async ({ page }) => {
+  await openNearlyOver(page, 500, 100);
+  await dragToCell(page, 0, 0, 0);
+  await expect(page.locator('#overlay')).toBeVisible();
+  await expect(page).toHaveScreenshot('game-over.png');
 });

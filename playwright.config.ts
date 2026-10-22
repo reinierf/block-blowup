@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 5173;
+/** Preview of a test-mode production build (service worker, precache, manifest). */
+const PWA_PORT = 4174;
+export const PWA_DIST = 'dist-test';
 
 /**
  * Projects:
@@ -8,6 +11,8 @@ const PORT = 5173;
  * - visual: screenshot baselines (tests/visual). Only with VISUAL=1, because baselines are
  *   rendered on Linux in the pinned Playwright image (CI, or `npm run e2e:visual`).
  * - perf: frame-time measurement (tests/perf). Only with PERF=1 (nightly job).
+ * - pwa: manifest, service worker, offline, update prompt (tests/pwa), against `vite preview`
+ *   of a `--mode test` build. Chromium only: Playwright's WebKit has no service workers.
  */
 const visual = process.env.VISUAL === '1';
 const perf = process.env.PERF === '1';
@@ -30,6 +35,11 @@ export default defineConfig({
     { name: 'pixel-7', testDir: 'tests/e2e', use: { ...devices['Pixel 7'] } },
     { name: 'iphone-14', testDir: 'tests/e2e', use: { ...devices['iPhone 14'] } },
     { name: 'desktop-chromium', testDir: 'tests/e2e', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'pwa',
+      testDir: 'tests/pwa',
+      use: { ...devices['Pixel 7'], baseURL: `http://localhost:${PWA_PORT}/block-blast/` },
+    },
     ...(visual
       ? [{ name: 'visual', testDir: 'tests/visual', use: { ...devices['Pixel 7'] } }]
       : []),
@@ -44,9 +54,19 @@ export default defineConfig({
         ]
       : []),
   ],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}/`,
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: [
+    {
+      command: `npx vite --port ${PORT} --strictPort`,
+      url: `http://localhost:${PORT}/`,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command:
+        `npx vite build --mode test --outDir ${PWA_DIST} --emptyOutDir && ` +
+        `npx vite preview --outDir ${PWA_DIST} --port ${PWA_PORT} --strictPort`,
+      url: `http://localhost:${PWA_PORT}/block-blast/`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 180_000,
+    },
+  ],
 });

@@ -2,10 +2,17 @@ import type { Page } from '@playwright/test';
 import type { BlowupSnapshot } from '../../src/test-hook';
 import type { Layout } from '../../src/render/layout';
 
-/** Open the game in test mode with a fixed seed and wait for the test hook. */
-export async function openGame(page: Page, seed = 1): Promise<void> {
+/** Load the app in test mode (start screen showing) and wait for the test hook. */
+export async function openApp(page: Page, seed = 1): Promise<void> {
   await page.goto(`./?seed=${seed}&test=1`);
   await page.waitForFunction(() => !!window.__blowup?.layout());
+}
+
+/** Open the app and start a new game with a fixed seed. */
+export async function openGame(page: Page, seed = 1): Promise<void> {
+  await openApp(page, seed);
+  await page.click('#play');
+  await page.locator('#start').waitFor({ state: 'hidden' });
 }
 
 export function snapshot(page: Page): Promise<BlowupSnapshot> {
@@ -106,4 +113,42 @@ export async function playClearing(page: Page, moves: number): Promise<void> {
 
 export function lastFeedback(page: Page) {
   return page.evaluate(() => window.__blowup!.lastFeedback());
+}
+
+/** Tap Continue on the start screen and wait until the saved game is running. */
+export async function continueGame(page: Page): Promise<void> {
+  await page.click('#continue');
+  await page.locator('#start').waitFor({ state: 'hidden' });
+}
+
+/** A saved game one move from game over: only single holes left, a square3 still in hand. */
+export function nearlyOverSave(score: number) {
+  const row = (start: number) =>
+    Array.from({ length: 8 }, (_, x) => ((x + start) % 2 === 0 ? null : 'blue'));
+  return {
+    v: 1,
+    rngState: 12345,
+    board: Array.from({ length: 8 }, (_, y) => row(y)),
+    hand: [{ shape: 'single', color: 'red' }, { shape: 'square3', color: 'green' }, null],
+    score,
+    combo: 0,
+    movesSinceClear: 1,
+    bestCombo: 0,
+    handsWithoutClear: 0,
+    handHadClear: false,
+    status: 'playing',
+  };
+}
+
+/** Start a saved game that is one move from game over (see nearlyOverSave). */
+export async function openNearlyOver(page: Page, score: number, highScore: number) {
+  await page.addInitScript(
+    ({ save, best }) => {
+      localStorage.setItem('block-blowup.highscore', String(best));
+      localStorage.setItem('block-blowup.game', JSON.stringify(save));
+    },
+    { save: nearlyOverSave(score), best: highScore },
+  );
+  await openApp(page);
+  await continueGame(page);
 }

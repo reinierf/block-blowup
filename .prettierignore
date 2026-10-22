@@ -6,3 +6,6 @@ node_modules/
 package-lock.json
 docs/screenshot.png
 HANDOVER.md
+dist-test/
+.lighthouseci/
+public/favicon.svg

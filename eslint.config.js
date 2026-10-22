@@ -4,7 +4,17 @@ import prettier from 'eslint-config-prettier';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['dist/', 'coverage/', 'playwright-report/', 'test-results/', 'node_modules/'] },
+  {
+    ignores: [
+      'dist/',
+      'dist-test/',
+      'coverage/',
+      'playwright-report/',
+      'test-results/',
+      '.lighthouseci/',
+      'node_modules/',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strict,
   {

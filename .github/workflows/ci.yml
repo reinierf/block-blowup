@@ -83,8 +83,24 @@ jobs:
     needs: [check, e2e]
     runs-on: ubuntu-latest
     steps:
-      # Turned on in Phase 7 (PWA). Passes trivially until then.
-      - run: echo "Lighthouse CI not configured yet"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx vite build
+      # Mobile preset (Lighthouse default): performance and accessibility >= 0.9.
+      # Installability is covered by the Playwright PWA tests (Lighthouse 12 dropped its
+      # PWA category).
+      - name: Lighthouse CI
+        run: npm run lighthouse
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: .lighthouseci
+          if-no-files-found: ignore
 
   deploy:
     name: Deploy to GitHub Pages

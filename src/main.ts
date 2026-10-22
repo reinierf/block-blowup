@@ -1,18 +1,27 @@
 // src/main.ts
-// Bootstrap: theme, settings, game, renderer, input, feedback (audio, haptics), HUD,
-// overlays, and the frame loop.
+// Bootstrap: theme, settings, screens, game (new or resumed), renderer, input, feedback
+// (audio, haptics), HUD, PWA, and the frame loop.
 
 import { AudioManager } from './audio';
 import { feedbackFor, type FeedbackPlan } from './feedback/plan';
+import { difficultyFor } from './game/difficulty';
 import { Mulberry32 } from './game/rng';
+import { restoreGame, saveGame, type SavedGame } from './game/save';
 import { Game, GameStatus, type TurnResult } from './game/state';
 import { createHaptics } from './haptics';
-import { createInput } from './input';
+import { createInput, type DragState } from './input';
+import { setupPwa } from './pwa';
 import { computeLayout, type Insets, type Layout } from './render/layout';
-import { createPixiRenderer } from './render/pixi-renderer';
+import type { Renderer } from './render/renderer';
 import { cssVariables, theme } from './render/theme';
-import { loadSettings, reduceMotion, saveSettings } from './settings';
-import { loadHighScore, saveHighScore } from './storage';
+import { loadSettings, reduceMotion, saveSettings, type ReducedMotionSetting } from './settings';
+import {
+  clearSavedGame,
+  loadHighScore,
+  loadSavedGame,
+  saveGameInProgress,
+  saveHighScore,
+} from './storage';
 import { installTestHook } from './test-hook';
 
 // --- DOM ---------------------------------------------------------------------
@@ -28,13 +37,18 @@ const scoreEl = el('score');
 const bestEl = el('best');
 const comboWrap = el('combo-wrap');
 const comboEl = el('combo');
-const muteBtn = el<HTMLButtonElement>('mute');
+const safeProbe = el('safe-probe');
+const startScreen = el('start');
+const startBest = el('start-best');
+const continueBtn = el<HTMLButtonElement>('continue');
+const settingsScreen = el('settings');
+const soundToggle = el<HTMLInputElement>('set-sound');
+const hapticsToggle = el<HTMLInputElement>('set-haptics');
+const hapticsNote = el('haptics-note');
 const overlay = el('overlay');
-const overlayTitle = el('overlay-title');
 const overlayMsg = el('overlay-msg');
 const newBestEl = el('new-best');
-const restartBtn = el<HTMLButtonElement>('restart');
-const safeProbe = el('safe-probe');
+const debugEl = el('debug');
 
 // --- Theme -------------------------------------------------------------------
 for (const [name, value] of Object.entries(cssVariables())) {
@@ -49,10 +63,10 @@ const testMode = devOrTest && params.get('test') === '1';
 // Test mode freezes animations (effects finish instantly) unless `animate=1` (perf runs).
 const freezeAnimations = testMode && params.get('animate') !== '1';
 const seedParam = devOrTest ? params.get('seed') : null;
-const seed =
-  seedParam !== null && /^\d+$/.test(seedParam)
-    ? Number(seedParam) >>> 0
-    : crypto.getRandomValues(new Uint32Array(1))[0]!;
+/** The first new game uses ?seed= (dev/test builds); later ones a random seed. */
+let nextSeed: number | null =
+  seedParam !== null && /^\d+$/.test(seedParam) ? Number(seedParam) >>> 0 : null;
+const showDebug = params.has('debug');
 
 // --- Settings, audio, haptics ----------------------------------------------------
 const settings = loadSettings();
@@ -63,20 +77,7 @@ const haptics = createHaptics(navigator, settings.haptics);
 // iOS only lets audio start from a user gesture: unlock on the first pointer event.
 window.addEventListener('pointerdown', () => audio.unlock(), { capture: true, passive: true });
 
-function renderMuteButton(): void {
-  muteBtn.setAttribute('aria-pressed', String(settings.muted));
-  muteBtn.setAttribute('aria-label', settings.muted ? 'Sound off' : 'Sound on');
-  muteBtn.classList.toggle('muted', settings.muted);
-}
-
-muteBtn.addEventListener('click', () => {
-  settings.muted = !settings.muted;
-  audio.muted = settings.muted;
-  saveSettings(settings);
-  renderMuteButton();
-});
-
-// --- State -------------------------------------------------------------------
+// --- Game state --------------------------------------------------------------
 let layout: Layout | null = null;
 let highScore = loadHighScore();
 /** The best score when this game started, for "New best!". */
@@ -84,19 +85,79 @@ let bestAtStart = highScore;
 /** Score shown in the HUD; counts up towards game.score. */
 let shownScore = 0;
 let lastFeedback: FeedbackPlan | null = null;
-const game = new Game({ rng: new Mulberry32(seed).next });
+let seed = 0;
+let random = new Mulberry32(0);
+/**
+ * Until Play or Continue, a throwaway game (never saved) sits behind the start screen, so
+ * launching never overwrites the saved game and doesn't use up the ?seed.
+ */
+let game = new Game({ rng: random.next });
 
-const renderer = await createPixiRenderer(stage, {
-  freezeAnimations,
-  maxResolution: 2,
-});
+function newGame(): void {
+  seed = nextSeed ?? crypto.getRandomValues(new Uint32Array(1))[0]!;
+  nextSeed = null;
+  random = new Mulberry32(seed);
+  game = new Game({ rng: random.next });
+  afterGameChange();
+}
 
-const input = createInput({
-  surface: renderer.canvas,
-  getLayout: () => layout,
-  getGame: () => game,
-  onPlace: handlePlace,
-});
+function resumeGame(saved: SavedGame): void {
+  random = new Mulberry32(saved.rngState);
+  game = restoreGame(saved, random.next);
+  afterGameChange();
+}
+
+function afterGameChange(): void {
+  renderer?.clearEffects();
+  lastFeedback = null;
+  bestAtStart = highScore;
+  shownScore = game.score;
+  scoreEl.textContent = String(shownScore);
+  persist();
+  updateHud();
+}
+
+/** Save after every move, so a killed PWA resumes where it was. */
+function persist(): void {
+  if (game.status === GameStatus.GAME_OVER) clearSavedGame();
+  else saveGameInProgress(saveGame(game, random.state));
+}
+
+// --- Renderer (loaded on demand) ---------------------------------------------------
+// The start screen is plain HTML. The PixiJS renderer (the heavy part: module, WebGL set-up,
+// texture baking) loads when the player first starts or continues a game, so launching
+// stays fast. The service worker precaches the chunk, so this costs a moment once.
+let renderer: Renderer | null = null;
+let rendererReady: Promise<Renderer> | null = null;
+let input: { readonly drag: DragState | null } | null = null;
+
+function ensureRenderer(): Promise<Renderer> {
+  rendererReady ??= (async () => {
+    const { createPixiRenderer } = await import('./render/pixi-renderer');
+    const r = await createPixiRenderer(stage, { freezeAnimations, maxResolution: 2 });
+    renderer = r;
+    input = createInput({
+      surface: r.canvas,
+      getLayout: () => (isScreenOpen() ? null : layout),
+      getGame: () => game,
+      onPlace: handlePlace,
+    });
+    if (layout) r.resize(layout);
+    return r;
+  })();
+  return rendererReady;
+}
+
+/** Disable a button while the renderer loads behind it. */
+async function withRenderer(button: HTMLButtonElement, then: () => void): Promise<void> {
+  button.disabled = true;
+  try {
+    await ensureRenderer();
+    then();
+  } finally {
+    button.disabled = false;
+  }
+}
 
 // --- Sizing ------------------------------------------------------------------
 function readInsets(): Insets {
@@ -121,14 +182,14 @@ function resize(): void {
     width: `${layout.hud.w}px`,
     height: `${layout.hud.h}px`,
   });
-  renderer.resize(layout);
+  renderer?.resize(layout);
 }
 
 // --- Gameplay callbacks ------------------------------------------------------
 function handlePlace(result: TurnResult): void {
   const plan = feedbackFor(result, { reduceMotion: reduceMotion(settings, motionQuery.matches) });
   lastFeedback = plan;
-  renderer.playEffects(result, plan);
+  renderer!.playEffects(result, plan);
   for (const cue of plan.sounds) audio.play(cue);
   if (plan.haptic !== null) haptics.vibrate(plan.haptic);
 
@@ -136,8 +197,10 @@ function handlePlace(result: TurnResult): void {
     highScore = game.score;
     saveHighScore(highScore);
   }
+  persist();
   updateHud();
-  if (game.status === GameStatus.GAME_OVER) renderer.playGameOver(game, showGameOver);
+  updateDebug();
+  if (game.status === GameStatus.GAME_OVER) renderer!.playGameOver(game, showGameOver);
 }
 
 function updateHud(): void {
@@ -158,21 +221,115 @@ function tickScore(dt: number): void {
   scoreEl.textContent = String(shownScore);
 }
 
+function updateDebug(): void {
+  if (!showDebug) return;
+  const d = game.lastDeal;
+  debugEl.textContent = [
+    `seed ${seed}`,
+    `difficulty ${difficultyFor(game.score).toFixed(2)}`,
+    d
+      ? `deal: redraws ${d.redraws}, mercy ${d.mercyReason ?? 'no'}${d.mercy ? ' (boosted)' : ''}`
+      : 'deal: (restored)',
+    d
+      ? `solvable ${d.requireSolvable ? d.solvable : 'not required'}, fallback ${d.fallback}, nodes ${d.solverNodes}`
+      : '',
+    `combo ${game.combo} (misses ${game.movesSinceClear}), dry hands ${game.handsWithoutClear}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+// --- Screens -----------------------------------------------------------------
+function isScreenOpen(): boolean {
+  return !startScreen.hidden || !settingsScreen.hidden || !overlay.hidden;
+}
+
+function showStart(): void {
+  overlay.hidden = true;
+  settingsScreen.hidden = true;
+  startBest.textContent = String(highScore);
+  continueBtn.hidden = loadSavedGame() === null;
+  startScreen.hidden = false;
+}
+
 function showGameOver(): void {
-  overlayTitle.textContent = 'Game Over';
   overlayMsg.textContent = `Score ${game.score}  ·  Best ${Math.max(highScore, game.score)}`;
   newBestEl.hidden = !(game.score > bestAtStart && game.score > 0);
   overlay.hidden = false;
 }
 
-restartBtn.addEventListener('click', () => {
-  game.reset();
-  renderer.clearEffects();
-  bestAtStart = highScore;
-  shownScore = 0;
-  scoreEl.textContent = '0';
-  updateHud();
+const playBtn = el<HTMLButtonElement>('play');
+playBtn.addEventListener('click', () =>
+  withRenderer(playBtn, () => {
+    newGame();
+    startScreen.hidden = true;
+    updateDebug();
+  }),
+);
+
+continueBtn.addEventListener('click', () =>
+  withRenderer(continueBtn, () => {
+    const saved = loadSavedGame();
+    if (saved) resumeGame(saved);
+    startScreen.hidden = true;
+    updateDebug();
+  }),
+);
+
+el('restart').addEventListener('click', () => {
+  newGame();
   overlay.hidden = true;
+  updateDebug();
+});
+
+el('to-menu').addEventListener('click', () => {
+  newGame();
+  showStart();
+});
+
+// --- Settings screen ---------------------------------------------------------
+/** Where Done returns to: the start screen, or back to the game. */
+let settingsFromStart = false;
+
+function openSettings(fromStart: boolean): void {
+  settingsFromStart = fromStart;
+  soundToggle.checked = !settings.muted;
+  hapticsToggle.checked = settings.haptics && haptics.supported;
+  hapticsToggle.disabled = !haptics.supported;
+  hapticsNote.hidden = haptics.supported;
+  for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"]')) {
+    r.checked = r.value === settings.reducedMotion;
+  }
+  startScreen.hidden = true;
+  settingsScreen.hidden = false;
+}
+
+function applySettings(): void {
+  audio.muted = settings.muted;
+  haptics.enabled = settings.haptics;
+  saveSettings(settings);
+}
+
+soundToggle.addEventListener('change', () => {
+  settings.muted = !soundToggle.checked;
+  applySettings();
+});
+hapticsToggle.addEventListener('change', () => {
+  settings.haptics = hapticsToggle.checked;
+  applySettings();
+  if (settings.haptics) haptics.vibrate(20); // a sample buzz
+});
+for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"]')) {
+  r.addEventListener('change', () => {
+    if (r.checked) settings.reducedMotion = r.value as ReducedMotionSetting;
+    applySettings();
+  });
+}
+el('open-settings').addEventListener('click', () => openSettings(false));
+el('start-settings').addEventListener('click', () => openSettings(true));
+el('settings-done').addEventListener('click', () => {
+  settingsScreen.hidden = true;
+  if (settingsFromStart) showStart();
 });
 
 // --- Frame loop (paused while the tab is hidden) -----------------------------
@@ -186,7 +343,7 @@ function frame(now: number): void {
   lastTime = now;
   tickScore(dt);
   const t0 = performance.now();
-  const drew = renderer.frame(game, input.drag, dt);
+  const drew = renderer?.frame(game, input?.drag ?? null, dt) ?? false;
   if (testMode && drew) frameCosts.push(performance.now() - t0);
   rafId = requestAnimationFrame(frame);
 }
@@ -204,14 +361,17 @@ document.addEventListener('visibilitychange', () => {
 // --- Init --------------------------------------------------------------------
 resize();
 updateHud();
-renderMuteButton();
 new ResizeObserver(resize).observe(stage);
+debugEl.hidden = !showDebug;
+updateDebug();
+showStart();
 start();
+setupPwa(el('update'), el<HTMLButtonElement>('update-reload'));
 
 if (testMode) {
   installTestHook({
-    game,
-    seed,
+    getGame: () => game,
+    getSeed: () => seed,
     getLayout: () => layout,
     frameCosts,
     getFeedback: () => lastFeedback,
