@@ -16,6 +16,8 @@ export interface BlowupSnapshot {
   board: string[];
   /** Hand pieces (null = already placed). */
   hand: ({ name: string; color: string; cells: [number, number][]; w: number; h: number } | null)[];
+  /** Per tray slot: the piece fits somewhere on the board (false for empty slots). */
+  fits: boolean[];
   lastDeal: DealInfo | null;
 }
 
@@ -59,6 +61,7 @@ export function installTestHook(deps: {
               }
             : null,
         ),
+        fits: game.hand.map((_, i) => game.pieceFits(i)),
         lastDeal: game.lastDeal,
       }),
     layout: () => structuredClone(getLayout()),

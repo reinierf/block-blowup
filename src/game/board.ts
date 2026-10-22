@@ -12,6 +12,11 @@ export interface FullLines {
   cols: number[];
 }
 
+export interface LinePreview extends FullLines {
+  /** Every cell in the completed rows and columns, each once, row-major. */
+  cells: [x: number, y: number][];
+}
+
 export class Board {
   readonly size: number;
   /** grid[y][x] */
@@ -74,6 +79,35 @@ export class Board {
       if (full) cols.push(x);
     }
     return { rows, cols };
+  }
+
+  /**
+   * Which rows and columns placing `shape` at (ox, oy) would complete, without changing
+   * the board. Returns null if the placement is illegal.
+   */
+  previewLines(shape: Shape, ox: number, oy: number): LinePreview | null {
+    if (!this.canPlace(shape, ox, oy)) return null;
+    const filled = (x: number, y: number) =>
+      this.grid[y]![x] !== null || shape.cells.some(([cx, cy]) => ox + cx === x && oy + cy === y);
+    const rows: number[] = [];
+    const cols: number[] = [];
+    for (let y = 0; y < this.size; y++) {
+      let full = true;
+      for (let x = 0; x < this.size && full; x++) full = filled(x, y);
+      if (full) rows.push(y);
+    }
+    for (let x = 0; x < this.size; x++) {
+      let full = true;
+      for (let y = 0; y < this.size && full; y++) full = filled(x, y);
+      if (full) cols.push(x);
+    }
+    const cells: [number, number][] = [];
+    for (let y = 0; y < this.size; y++) {
+      for (let x = 0; x < this.size; x++) {
+        if (rows.includes(y) || cols.includes(x)) cells.push([x, y]);
+      }
+    }
+    return { rows, cols, cells };
   }
 
   /** Empty the given rows and columns. Returns the number of cells cleared. */

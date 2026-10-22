@@ -2,7 +2,7 @@
 // The game state machine: board + hand, turn resolution, scoring, game-over detection.
 // Pure module: no DOM, no rendering, no Math.random (the caller supplies the RNG).
 
-import { Board } from './board';
+import { Board, type LinePreview } from './board';
 import { rowsFromBoard } from './bitboard';
 import { Generator, type DealInfo } from './generator';
 import type { Shape } from './pieces';
@@ -180,6 +180,21 @@ export class Game {
       deal,
       gameOver: this.status === GameStatus.GAME_OVER,
     };
+  }
+
+  /** Can hand slot `handIndex` be placed anywhere? False for an empty slot. */
+  pieceFits(handIndex: number): boolean {
+    const slot = this.hand[handIndex];
+    return !!slot && this.canPlaceAnywhere(slot.shape);
+  }
+
+  /**
+   * The lines placing hand slot `handIndex` at (ox, oy) would clear, for the drag preview.
+   * Null if the placement is illegal. Does not change the game.
+   */
+  previewAt(handIndex: number, ox: number, oy: number): LinePreview | null {
+    const slot = this.hand[handIndex];
+    return slot ? this.board.previewLines(slot.shape, ox, oy) : null;
   }
 
   /** Is there at least one legal placement for some piece currently in hand? */

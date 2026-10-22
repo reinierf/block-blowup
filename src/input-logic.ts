@@ -6,8 +6,10 @@ import type { Shape } from './game/pieces';
 import type { Layout } from './render/layout';
 
 export const INPUT = {
-  /** On touch, the piece floats this many board cells above the finger. */
-  touchLiftCells: 0.6,
+  /** On touch, the piece floats this many board cells above the finger (tune on a phone). */
+  touchLiftCells: 1.6,
+  /** Seconds for a picked-up piece to grow from tray size to board size. */
+  liftSeconds: 0.12,
   /**
    * How far (in board cells) the piece's top-left may overhang the board and still snap.
    * 0.5 means "over the board or within about half a cell of it".

@@ -1,6 +1,5 @@
 import { test, expect } from '../e2e/fixtures';
-import { dragToCell, snapshot } from '../e2e/helpers';
-import type { BlowupSnapshot } from '../../src/test-hook';
+import { clearingMove, dragToCell, snapshot } from '../e2e/helpers';
 
 /**
  * Alert threshold for the 95th-percentile frame time (HANDOVER.md §3.7, item 7).
@@ -13,25 +12,6 @@ import type { BlowupSnapshot } from '../../src/test-hook';
  */
 const P95_BUDGET_MS = 20;
 const DURATION_MS = 10_000;
-
-/** The move that completes the most lines (ties: first found), so the run includes clears. */
-function clearingMove(snap: BlowupSnapshot): { slot: number; col: number; row: number } {
-  let best = { slot: -1, col: 0, row: 0, lines: -1 };
-  snap.hand.forEach((p, slot) => {
-    if (!p) return;
-    for (let row = 0; row + p.h <= 8; row++) {
-      for (let col = 0; col + p.w <= 8; col++) {
-        if (!p.cells.every(([x, y]) => snap.board[row + y]![col + x] === '.')) continue;
-        const filled = snap.board.map((r) => [...r].map((c) => c !== '.'));
-        for (const [x, y] of p.cells) filled[row + y]![col + x] = true;
-        let lines = filled.filter((r) => r.every(Boolean)).length;
-        for (let x = 0; x < 8; x++) if (filled.every((r) => r[x])) lines++;
-        if (lines > best.lines) best = { slot, col, row, lines };
-      }
-    }
-  });
-  return best;
-}
 
 test('frame cost while dragging and clearing, CPU throttled 4×', async ({ page }, info) => {
   const cdp = await page.context().newCDPSession(page);

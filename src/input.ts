@@ -3,6 +3,7 @@
 // Geometry comes from the shared layout (render/layout.ts) and input-logic.ts; moves are
 // validated against the Game.
 
+import type { LinePreview } from './game/board';
 import type { Shape } from './game/pieces';
 import type { Game, TurnResult } from './game/state';
 import { dropTarget, pieceOrigin, type Point } from './input-logic';
@@ -21,6 +22,8 @@ export interface DragState {
   target: { col: number; row: number } | null;
   /** The target is a legal placement. */
   valid: boolean;
+  /** Lines the drop would clear (empty preview when none); null unless `valid`. */
+  preview: LinePreview | null;
 }
 
 export interface InputDeps {
@@ -48,8 +51,10 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
     const origin = pieceOrigin(layout, d.shape, point, d.isTouch);
     d.originX = origin.x;
     d.originY = origin.y;
-    d.target = dropTarget(layout, d.shape, origin, getGame().size);
-    d.valid = !!d.target && getGame().canPlace(d.handIndex, d.target.col, d.target.row);
+    const game = getGame();
+    d.target = dropTarget(layout, d.shape, origin, game.size);
+    d.preview = d.target ? game.previewAt(d.handIndex, d.target.col, d.target.row) : null;
+    d.valid = d.preview !== null;
   }
 
   function endDrag(): void {
@@ -67,7 +72,8 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
     const handIndex = slotAt(layout, point.x, point.y);
     if (handIndex < 0) return;
     const piece = getGame().hand[handIndex];
-    if (!piece) return;
+    // Greyed-out pieces (no legal placement anywhere) can't be picked up.
+    if (!piece || !getGame().pieceFits(handIndex)) return;
 
     drag = {
       handIndex,
@@ -79,6 +85,7 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
       originY: 0,
       target: null,
       valid: false,
+      preview: null,
     };
     move(drag, point);
     surface.setPointerCapture?.(e.pointerId);

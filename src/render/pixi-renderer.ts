@@ -14,12 +14,19 @@ import {
 } from 'pixi.js';
 import type { Game, TurnResult } from '../game/state';
 import type { DragState } from '../input';
+import { INPUT } from '../input-logic';
 import type { Layout } from './layout';
 import type { Renderer, RendererOptions } from './renderer';
 import { hexToNumber, shade, theme } from './theme';
 
 /** Gap between neighbouring cells, as a fraction of a cell. */
 const CELL_GAP = 0.06;
+
+/** Tray pieces that fit nowhere: dimmed and desaturated. */
+const UNPLACEABLE_ALPHA = 0.35;
+const UNPLACEABLE_TINT = 0x8a8f99;
+
+const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 
 interface Flash {
   kind: 'flash';
@@ -212,21 +219,43 @@ export async function createPixiRenderer(
         trayLayer.addChild(c);
       }
     }
-    trayLayer.children.forEach((c, i) => (c.visible = !drag || drag.handIndex !== i));
+    trayLayer.children.forEach((c, i) => {
+      c.visible = !drag || drag.handIndex !== i;
+      const fits = game.pieceFits(i);
+      c.alpha = fits ? 1 : UNPLACEABLE_ALPHA;
+      for (const sp of c.children) (sp as Sprite).tint = fits ? 0xffffff : UNPLACEABLE_TINT;
+    });
   }
 
   let dragKey = '';
+  /** 0 → 1 while a picked-up piece grows from tray size to board size. */
+  let lift = 1;
 
-  function drawDrag(drag: DragState | null): void {
+  function drawDrag(drag: DragState | null, dt: number): void {
     const key = drag ? `${layoutVersion}:${drag.handIndex}:${drag.shape.id}:${drag.color}` : '';
     if (key !== dragKey) {
       dragKey = key;
+      lift = opts.freezeAnimations ? 1 : 0;
       dragLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
       if (drag)
         dragLayer.addChild(pieceContainer(drag.shape.cells, drag.color, layout!.board.cell));
+    } else if (drag) {
+      lift = Math.min(1, lift + dt / INPUT.liftSeconds);
     }
-    if (drag) dragLayer.position.set(drag.originX, drag.originY);
+    if (!drag) return;
+    // Interpolate from where the piece sits in the tray to where it follows the pointer.
+    const l = layout!;
+    const slot = l.hand.slots[drag.handIndex]!;
+    const trayScale = l.hand.cell / l.board.cell;
+    const fromX = slot.cx - (drag.shape.width * l.hand.cell) / 2;
+    const fromY = slot.cy - (drag.shape.height * l.hand.cell) / 2;
+    const e = easeOut(lift);
+    dragLayer.scale.set(trayScale + (1 - trayScale) * e);
+    dragLayer.position.set(fromX + (drag.originX - fromX) * e, fromY + (drag.originY - fromY) * e);
   }
+
+  /** Cells (index row*8+col) whose texture the line preview overrides this frame. */
+  const previewed = new Set<number>();
 
   const ghostPool: Sprite[] = [];
 
@@ -243,7 +272,10 @@ export async function createPixiRenderer(
         }
         sp.texture = tex;
         sp.tint = drag.valid ? 0xffffff : hexToNumber(theme.ghostInvalid);
-        sp.alpha = drag.valid ? 0.4 : 0.35;
+        const inLine =
+          drag.preview?.rows.includes(drag.target.row + cy) ||
+          drag.preview?.cols.includes(drag.target.col + cx);
+        sp.alpha = drag.valid ? (inLine ? 0.9 : 0.4) : 0.35;
         const p = cellPos(drag.target.col + cx, drag.target.row + cy);
         sp.position.set(p.x, p.y);
         sp.visible = true;
@@ -361,18 +393,25 @@ export async function createPixiRenderer(
   function frame(game: Game, drag: DragState | null, dt: number): boolean {
     if (!layout) return false;
     const sig = signature(game, drag);
-    if (sig === lastSignature && effects.length === 0) return false;
+    if (sig === lastSignature && effects.length === 0 && lift >= 1) return false;
     lastSignature = sig;
+    // Line-clear preview: existing cells in lines the drop would complete take on the
+    // dragged piece's colour.
+    previewed.clear();
+    if (drag?.valid && drag.preview) {
+      for (const [x, y] of drag.preview.cells) previewed.add(y * 8 + x);
+    }
     const grid = game.board.grid;
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
-        const color = grid[row]![col];
-        cellSprites[row * 8 + col]!.texture = color ? blockTexture(color) : emptyTexture;
+        const i = row * 8 + col;
+        const color = previewed.has(i) && grid[row]![col] ? drag!.color : grid[row]![col];
+        cellSprites[i]!.texture = color ? blockTexture(color) : emptyTexture;
       }
     }
     drawGhost(drag);
     drawTray(game, drag);
-    drawDrag(drag);
+    drawDrag(drag, dt);
     updateEffects(dt);
     app.renderer.render(app.stage);
     return true;

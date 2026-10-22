@@ -171,14 +171,23 @@ that matters — if two of your three pieces still fit, you keep playing.
 - **Drag and drop** a piece from the tray onto the board using Pointer Events, so mouse,
   touch, and pen all use one code path (`src/input.ts`). Only one pointer is tracked at a
   time; extra touches are ignored. The whole tray slot is the hit area (at least 44×44 px).
-- The dragged piece is drawn at board size. With the mouse it is centred on the pointer;
-  on touch it floats `INPUT.touchLiftCells` (0.6) cells above the finger.
+- **Greyed-out pieces:** a tray piece that fits nowhere on the board is drawn dimmed and
+  grey (`Game.pieceFits`) and cannot be picked up.
+- **Lift:** a picked-up piece grows from tray size to board size over
+  `INPUT.liftSeconds` (0.12 s), moving from its tray position to the pointer. With the
+  mouse it is centred on the pointer; on touch it floats `INPUT.touchLiftCells` (1.6)
+  cells above the finger so the thumb never hides it.
 - **Snapping** (`dropTarget` in `src/input-logic.ts`): the piece's top-left snaps to the
   nearest cell when the piece is over the board or overhangs it by at most half a cell
   (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and
   releasing returns the piece to the tray.
 - While there is a target, a **ghost** shows where the piece would land: the piece's own
   block colour, faded, when legal; a faded red when blocked.
+- **Line-clear preview** (the most important feedback in the game): when a legal drop
+  would complete rows or columns, the existing cells of those lines take on the dragged
+  piece's colour and the ghost cells in them turn almost opaque. The logic is pure and
+  tested (`Board.previewLines`, `Game.previewAt`): it places the piece on a virtual copy
+  and reports the completed rows, columns and their cells (crossings counted once).
 - On release: a legal drop places the piece; anything else returns it to the tray.
 
 ## 8. Visuals and layout

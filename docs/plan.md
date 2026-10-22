@@ -10,7 +10,7 @@ This file tracks progress against those phases and records decisions made along 
 - [x] **Phase 2 — Rules (config module, combo grace, board-clear bonus)** (2026-10-22)
 - [x] **Phase 3 — Generator (weighted, fair, mercy rule)** (2026-10-22)
 - [x] **Phase 4 — PixiJS renderer, mobile layout, theme** (2026-10-22; real-phone check pending)
-- [ ] Phase 5 — Input and preview
+- [x] **Phase 5 — Input and preview** (2026-10-22; touch lift to tune on a phone)
 - [ ] Phase 6 — Feedback, audio, haptics
 - [ ] Phase 7 — PWA and screens
 
@@ -130,6 +130,21 @@ This file tracks progress against those phases and records decisions made along 
 - **Still to do by hand:** check on a real phone: 60 fps while dragging, crisp at high
   DPR, no gesture conflicts (pull-to-refresh, zoom, long-press). `npm run dev` serves on
   the LAN.
+
+## Phase 5 notes
+
+- Line preview: `Board.previewLines` / `Game.previewAt` (pure, unit- and property-tested
+  against actually placing). The renderer recolours the existing cells of completed lines
+  in the dragged piece's colour.
+- Lift animation from tray to board size (0.12 s); touch offset 1.6 cells (was 0.6).
+- Unplaceable tray pieces are greyed out (`Game.pieceFits`) and can't be picked up.
+- Ghost only within half a cell of the board; far drops return to the tray (Phase 4).
+- Tests: preview unit tests incl. row-and-column crossings and multi-line clears;
+  input-logic module tests (snapping, tolerance, hit areas); e2e "greyed-out piece can't
+  be dragged" (seed 298, 10 first-fit moves, found by searching seeds in Node); visual
+  baselines for the line-clear preview mid-drag and the greyed-out piece.
+- Taste defaults to review: `touchLiftCells` 1.6, `liftSeconds` 0.12, grey-out alpha 0.35.
+- Still to do by hand on a phone: tune the touch offset (handover suggests 1.5 to 2 cells).
 
 ## Known issues
 
