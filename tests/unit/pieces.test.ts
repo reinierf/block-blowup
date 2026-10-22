@@ -3,10 +3,10 @@ import { FAMILY_WEIGHTS } from '../../src/game/config';
 import { SHAPES } from '../../src/game/pieces';
 
 describe('SHAPES', () => {
-  it('has the 33 shapes of the fork, with sequential ids and unique names', () => {
-    expect(SHAPES).toHaveLength(33);
-    expect(SHAPES.map((s) => s.id)).toEqual([...Array(33).keys()]);
-    expect(new Set(SHAPES.map((s) => s.name)).size).toBe(33);
+  it('has the 33 shapes of the fork plus 6 diagonals, with sequential ids and unique names', () => {
+    expect(SHAPES).toHaveLength(39);
+    expect(SHAPES.map((s) => s.id)).toEqual([...Array(39).keys()]);
+    expect(new Set(SHAPES.map((s) => s.name)).size).toBe(39);
   });
 
   it('keeps every cell inside its bounding box and touches every edge', () => {
@@ -34,8 +34,11 @@ describe('SHAPES', () => {
       'T-up': 4,
       'S-h': 4,
       'bigL-1': 5,
+      'diag2-up': 2,
+      'diag3-down': 3,
+      'diag4-up': 4,
     });
-    expect(SHAPES.reduce((n, s) => n + s.cells.length, 0)).toBe(134);
+    expect(SHAPES.reduce((n, s) => n + s.cells.length, 0)).toBe(152);
   });
 
   it('puts every shape in a family that has generator weights', () => {
@@ -45,6 +48,7 @@ describe('SHAPES', () => {
     expect([count('single'), count('line5'), count('corner'), count('SZ'), count('bigL')]).toEqual([
       1, 2, 4, 4, 4,
     ]);
+    expect([count('diag2'), count('diag3'), count('diag4')]).toEqual([2, 2, 2]);
   });
 
   it('is frozen', () => {

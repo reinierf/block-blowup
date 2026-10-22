@@ -18,7 +18,10 @@ export type ShapeFamily =
   | 'L'
   | 'T'
   | 'SZ'
-  | 'bigL';
+  | 'bigL'
+  | 'diag2'
+  | 'diag3'
+  | 'diag4';
 
 export type CellOffset = readonly [x: number, y: number];
 
@@ -92,6 +95,14 @@ const SHAPE_DEFS: ShapeDef[] = [
   { name: 'bigL-2', family: 'bigL', pattern: ['..X', '..X', 'XXX'] },
   { name: 'bigL-3', family: 'bigL', pattern: ['XXX', 'X..', 'X..'] },
   { name: 'bigL-4', family: 'bigL', pattern: ['XXX', '..X', '..X'] },
+
+  // --- diagonals (cells touch only at corners; rare) -------------------------
+  { name: 'diag2-down', family: 'diag2', pattern: ['X.', '.X'] },
+  { name: 'diag2-up', family: 'diag2', pattern: ['.X', 'X.'] },
+  { name: 'diag3-down', family: 'diag3', pattern: ['X..', '.X.', '..X'] },
+  { name: 'diag3-up', family: 'diag3', pattern: ['..X', '.X.', 'X..'] },
+  { name: 'diag4-down', family: 'diag4', pattern: ['X...', '.X..', '..X.', '...X'] },
+  { name: 'diag4-up', family: 'diag4', pattern: ['...X', '..X.', '.X..', 'X...'] },
 ];
 
 /**

@@ -35,7 +35,7 @@ wider variety (including straight lines up to 5 long, larger squares, corners, T
 shapes, and big L-shapes). Each shape is always drawn in a consistent color derived from
 its shape id.
 
-The full shape set lives in `src/game/pieces.ts` (`SHAPES`). 33 shapes, including:
+The full shape set lives in `src/game/pieces.ts` (`SHAPES`). 39 shapes, including:
 
 | Family        | Examples                            |
 | ------------- | ----------------------------------- |
@@ -48,6 +48,7 @@ The full shape set lives in `src/game/pieces.ts` (`SHAPES`). 33 shapes, includin
 | T             | 4 orientations                      |
 | S / Z         | 2 orientations each                 |
 | Big L         | 5-cell L (4 orientations)           |
+| Diagonals     | 2, 3 or 4 cells corner to corner    |
 
 ### Hand generation (`src/game/generator.ts`)
 
@@ -62,16 +63,18 @@ Every number below lives in `src/game/config.ts`.
   (`difficultyFor` in `src/game/difficulty.ts`).
 - **Weights per shape family** (`FAMILY_WEIGHTS`, easy → hard, linear in difficulty). A
   family's weight is split equally between its orientations. The 1×1 single is rare early
-  and never dealt at full difficulty:
+  and never dealt at full difficulty; the diagonals (cells touching only at corners, as
+  in the original) are rare throughout, about 3% of pieces:
 
-  | Family                 | Easy (d=0)  | Hard (d=1) |
-  | ---------------------- | ----------- | ---------- |
-  | single                 | 1           | 0          |
-  | line2, square2, corner | 6, 6, 6     | 3, 4, 4    |
-  | line3                  | 5           | 4          |
-  | line4, L, T            | 3, 2.5, 2.5 | 4, 4, 3.5  |
-  | line5, rect            | 1.5, 1.5    | 4, 3.5     |
-  | square3, SZ, bigL      | 1, 1, 1     | 4, 3.5, 4  |
+  | Family                 | Easy (d=0)    | Hard (d=1)    |
+  | ---------------------- | ------------- | ------------- |
+  | single                 | 1             | 0             |
+  | line2, square2, corner | 6, 6, 6       | 3, 4, 4       |
+  | line3                  | 5             | 4             |
+  | line4, L, T            | 3, 2.5, 2.5   | 4, 4, 3.5     |
+  | line5, rect            | 1.5, 1.5      | 4, 3.5        |
+  | square3, SZ, bigL      | 1, 1, 1       | 4, 3.5, 4     |
+  | diag2, diag3, diag4    | 0.5, 0.3, 0.2 | 0.5, 0.5, 0.4 |
 
 - **No triples:** if the first two picks are the same shape, the third excludes it.
 - **Hard fairness rule:** a hand in which no piece fits anywhere is never dealt. The

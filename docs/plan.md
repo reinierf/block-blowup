@@ -216,6 +216,17 @@ Public repo, so Actions minutes are free; still trimmed to keep runs fast and qu
   intended colour or layout tweak. Layout is still checked through the e2e geometry
   assertions, and the PWA test reads manifest colours from the theme.
 
+## Diagonal pieces (2026-10-22)
+
+- Six diagonal shapes (`diag2`, `diag3`, `diag4`, two directions each), whose cells touch
+  only at corners, as in the original. They are rare at every difficulty, about 3% of
+  pieces (family weights in `config.ts`). The shape set grows from 33 to 39.
+- A diagonal fits a checkerboard of single holes, so the "never deals a dead hand" state
+  test now accepts a single or a diagonal.
+- Every seed deals differently, so the sim snapshot and seed-1 pin were regenerated and
+  the seeded e2e scenarios re-found: the 2-line clear moved from seed 67 to 83 (seeds 92 and 808
+  still work).
+
 ## Known issues
 
 - None open.

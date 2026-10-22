@@ -46,6 +46,14 @@ describe('shapeWeights', () => {
     expect(familyShare(1, easy)).toBeLessThan(familyShare(0, easy));
   });
 
+  it('deals diagonal pieces rarely at every difficulty', () => {
+    const diagonals: ShapeFamily[] = ['diag2', 'diag3', 'diag4'];
+    for (const d of [0, 0.5, 1]) {
+      expect(familyShare(d, diagonals)).toBeGreaterThan(0);
+      expect(familyShare(d, diagonals)).toBeLessThan(0.04);
+    }
+  });
+
   it('makes the 1×1 single rare early and never dealt at full difficulty', () => {
     const single = SHAPES.findIndex((s) => s.family === 'single');
     const share = (d: number) => {

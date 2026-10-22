@@ -282,7 +282,8 @@ describe('Game: hand refill and game over', () => {
 
   it('never deals a dead hand, even when only single holes are left', () => {
     // Under the fork's bag this board ended the game on a fresh hand (no single in it).
-    // The generator's hard fairness rule now guarantees a piece that fits.
+    // The generator's hard fairness rule now guarantees a piece that fits: on this board
+    // only a single or a diagonal can.
     const rows = [
       '#.#.#.#.',
       '.#.#.#.#',
@@ -296,7 +297,9 @@ describe('Game: hand refill and game over', () => {
     const g = setup(rows, [null, null, 'single']);
     const r = g.placeAt(2, 1, 0)!;
     expect(r.deal).not.toBeNull();
-    expect(g.hand.some((p) => p?.shape.name === 'single')).toBe(true);
+    const fitting = g.hand.filter((_, i) => g.pieceFits(i)).map((p) => p!.shape.family);
+    expect(fitting.length).toBeGreaterThan(0);
+    for (const f of fitting) expect(['single', 'diag2', 'diag3', 'diag4']).toContain(f);
     expect(r.gameOver).toBe(false);
     expect(g.status).toBe(GameStatus.PLAYING);
   });

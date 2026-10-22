@@ -79,6 +79,10 @@ export const FAMILY_WEIGHTS: Readonly<Record<ShapeFamily, readonly [easy: number
     T: [2.5, 3.5],
     SZ: [1, 3.5],
     bigL: [1, 4],
+    // Diagonals: rare, as in the original.
+    diag2: [0.5, 0.5],
+    diag3: [0.3, 0.5],
+    diag4: [0.2, 0.4],
   };
 
 /** Probability that a hand must be fully placeable (soft fairness rule), by difficulty. */
