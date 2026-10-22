@@ -17,7 +17,10 @@ npm run dev        # http://localhost:5173, also reachable from a phone on the s
 ```
 
 Other scripts: `build`, `preview`, `test`, `coverage`, `typecheck`, `lint`, `format`, `e2e`,
-`sim`. See [`AGENTS.md`](AGENTS.md).
+`e2e:visual`, `sim`, `lighthouse`, `icons`. See [`AGENTS.md`](AGENTS.md).
+
+It is an installable PWA: open it in Chrome (Android) or Safari (iOS) and use "Install" /
+"Add to Home Screen". It works offline and resumes a game after the app is closed.
 
 ## How to play
 

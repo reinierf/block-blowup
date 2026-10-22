@@ -31,6 +31,9 @@ npm run e2e          # Playwright: Pixel 7, iPhone 14 (WebKit), desktop Chromium
 npm run e2e:visual   # visual baselines, in the pinned Linux Playwright image (needs Docker)
 npm run e2e:visual:update  # re-render baselines on purpose (commit them with the change)
 npm run check:prod   # after a build: the test hook must not be in dist/
+npm run lighthouse   # Lighthouse CI on `vite preview` (build first; needs Chrome, or
+                     # CHROME_PATH=<Playwright's chromium>)
+npm run icons        # regenerate public/icons from scripts/make-icons.ts
 npm run sim          # simulation stats for seeds 1..300 (-- --from A --to B)
 npm run sim:update   # rewrite tests/sim-snapshot.json after an intended balance change
 ```
@@ -53,7 +56,12 @@ helpers are in `tests/e2e/helpers.ts`. Playwright runs with one worker: every br
 renders WebGL in software, and parallel browsers starve each other.
 
 Visual baselines (`tests/visual/__screenshots__`) are rendered only on Linux in the pinned
-image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`).
+image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`). The `pwa`
+project (`tests/pwa`, Chromium only) runs against `vite preview` of a `--mode test` build
+in `dist-test/`, which Playwright builds itself.
+
+The start screen is plain HTML; the PixiJS renderer is a dynamic import created on the
+first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 ## Conventions — please follow
 
@@ -94,6 +102,8 @@ image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`).
 | `src/input-logic.ts`            | Pure drag geometry (snapping, drop tolerance)       |
 | `src/test-hook.ts`              | `?seed&test=1` hook (dev/test builds only)          |
 | `src/feedback/plan.ts`          | Turn result → feedback plan (pure)                  |
+| `src/game/save.ts`              | Save / validate / restore a game in progress        |
+| `src/pwa.ts`                    | Service worker registration, update prompt          |
 | `src/audio.ts`                  | Synthesised Web Audio sound effects                 |
 | `src/haptics.ts`                | Feature-detected vibration                          |
 | `src/settings.ts`               | Mute / haptics / reduced-motion settings            |

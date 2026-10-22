@@ -12,7 +12,7 @@ This file tracks progress against those phases and records decisions made along 
 - [x] **Phase 4 — PixiJS renderer, mobile layout, theme** (2026-10-22; real-phone check pending)
 - [x] **Phase 5 — Input and preview** (2026-10-22; touch lift to tune on a phone)
 - [x] **Phase 6 — Feedback, audio, haptics** (2026-10-22)
-- [ ] Phase 7 — PWA and screens
+- [x] **Phase 7 — PWA and screens** (2026-10-22; install checks on real devices pending)
 
 ## Phase 0 notes
 
@@ -166,6 +166,37 @@ This file tracks progress against those phases and records decisions made along 
 - Taste defaults to review: sound design (C5 root, +2 semitones per combo step, one
   octave cap), shake 3 px + 3 px per extra line (max 12 px), haptic patterns, praise
   words, game-over fade about 1 s.
+
+## Phase 7 notes
+
+- Save and resume (`src/game/save.ts`, `src/storage.ts`): after every move, including the
+  RNG state; restored via Continue. Property test: save, JSON round trip, restore and
+  continue gives exactly the same game as never saving.
+- PWA via `vite-plugin-pwa` (prompt mode): manifest, maskable icons generated from code,
+  Apple touch icon, iOS meta tags, full precache, "Update available" toast.
+- Screens: start (Play / Continue / Settings, best score), settings (sound, vibration,
+  reduced motion), game over with "New best!" and Menu; `?debug` overlay with seed,
+  difficulty and generator decisions. The HUD mute button became a settings gear (the
+  Phase 6 mute e2e test moved to the settings-persistence test on purpose).
+- Lighthouse: the first run scored performance 0.74 (860 ms total blocking time: Pixi
+  start-up and texture baking under software WebGL). Making the start screen plain HTML
+  and loading the renderer on the first Play/Continue gives performance 1.0,
+  accessibility 1.0, TBT 0 ms, LCP 1.4 s (3 runs). The initial JS is 28 KB; the 304 KB
+  renderer chunk is precached by the service worker. Lighthouse 12 has no PWA category,
+  so installability is asserted by the Playwright PWA tests instead.
+- Tests: save/restore unit and property tests, `parseSavedGame` rejection cases; storage
+  module tests (unavailable, corrupt, old format); e2e start → play, reload → Continue
+  resumes, game over with and without "New best!" (a crafted save one move from the
+  end), settings persist, HUD settings return to the game, start screen without JS;
+  PWA tests against `vite preview` of a `--mode test` build (manifest and icons, service
+  worker controls the page, offline reload and play, update prompt on a waiting worker);
+  visual baselines for the start, settings and game-over screens; Lighthouse CI on `main`.
+- `npm audit` reports high/moderate advisories in `@lhci/cli`'s own dependencies
+  (basic-ftp, extract-zip, tmp, uuid, sprintf-js). Dev-only CI tooling, never in the game
+  bundle.
+- **Still to do by hand:** install on Android Chrome and iOS Safari ("Add to Home
+  Screen"), play in airplane mode, kill the app mid-game and Continue, and the Phase 4/5
+  phone checks (60 fps, crisp, no gesture conflicts, touch lift offset).
 
 ## Known issues
 

@@ -252,11 +252,45 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
   `reducedMotion`. Loading never throws; corrupt or old data falls back to defaults field
   by field. Only mute has a button so far; the settings screen comes in Phase 7.
 
+## 8b. Screens
+
+- **Start screen** (plain HTML, visible before any script runs): title, best score,
+  **Continue** (only when a saved game exists), **Play**, **Settings**. The PixiJS renderer
+  loads on the first Play/Continue (a moment, once; the service worker has it cached), so
+  launching is instant.
+- **Settings** (from the start screen or the HUD gear): Sound, Vibration (disabled with a
+  note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
+  and save immediately.
+- **Game over:** after the grey-out sequence, the score screen shows "New best!" when it
+  applies, the score and best, **Play again** and **Menu**.
+- **Update prompt:** when a new version has been downloaded, a small "Update available"
+  toast with **Reload** appears; the app never reloads by itself mid-game.
+- **Debug overlay:** `?debug` shows the seed, difficulty and the last deal's generator
+  decisions (redraws, mercy, solvability, fallback, solver nodes).
+
 ## 9. Persistence
 
-- The **high score** (`block-blowup.highscore`, `src/storage.ts`) and the **settings**
-  (`block-blowup.settings`, `src/settings.ts`) are saved in `localStorage`. No accounts,
-  no network, no telemetry.
+All in `localStorage`; no accounts, no network, no telemetry. Loading never throws:
+missing, blocked or corrupt data falls back to "nothing saved".
+
+- **High score:** `block-blowup.highscore` (`src/storage.ts`).
+- **Settings:** `block-blowup.settings` (`src/settings.ts`).
+- **Game in progress:** `block-blowup.game`, saved after every move and removed at game
+  over (`src/game/save.ts` serialises, `src/storage.ts` stores). A save holds the board,
+  hand (shape names and colours), score, combo, misses since the last clear, best combo,
+  the mercy-rule counters, status and the **RNG state**, so a resumed game continues
+  exactly as if it had never stopped (property-tested). Saves carry a version (`v: 1`);
+  anything invalid or of another version is ignored.
+
+## 9a. PWA
+
+- `vite-plugin-pwa` (prompt mode): web manifest (name "Block Blowup", short name
+  "Blowup", standalone, portrait, theme `#1E2A44`, background `#18223A`, 192/512 icons
+  as both `any` and `maskable`), Apple touch icon and iOS standalone meta tags.
+- The service worker precaches everything (HTML, JS including the renderer chunk, CSS,
+  icons), so the game runs fully offline after the first visit.
+- Icons are generated from code in the theme colours: `npm run icons`
+  (`scripts/make-icons.ts`).
 
 ## 10. Code map
 
@@ -280,7 +314,13 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 | `src/input-logic.ts`          | Pure drag geometry: piece origin, snapping, drop tolerance |
 | `src/test-hook.ts`            | `?seed&test=1` hook for Playwright (dev/test builds only)  |
 | `src/input.ts`                | Pointer-based drag & drop                                  |
-| `src/storage.ts`              | High-score persistence                                     |
+| `src/storage.ts`              | High score and saved game in localStorage                  |
+| `src/game/save.ts`            | Save / validate / restore a game in progress               |
+| `src/settings.ts`             | Settings (mute, haptics, reduced motion)                   |
+| `src/feedback/plan.ts`        | Turn result → feedback plan                                |
+| `src/audio.ts`                | Synthesised sound effects                                  |
+| `src/haptics.ts`              | Vibration                                                  |
+| `src/pwa.ts`                  | Service worker registration and update prompt              |
 
 ### Design rule
 
