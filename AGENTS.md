@@ -29,8 +29,6 @@ npm run coverage     # Vitest with coverage for src/game/
 npm run typecheck
 npm run lint         # ESLint + Prettier check (npm run format to fix)
 npm run e2e          # Playwright: Pixel 7, iPhone 14 (WebKit), desktop Chromium
-npm run e2e:visual   # visual baselines, in the pinned Linux Playwright image (needs Docker)
-npm run e2e:visual:update  # re-render baselines on purpose (commit them with the change)
 npm run check:prod   # after a build: the test hook must not be in dist/
 npm run lighthouse   # Lighthouse CI on `vite preview` (build first; needs Chrome, or
                      # CHROME_PATH=<Playwright's chromium>)
@@ -48,7 +46,7 @@ First Playwright run on a new machine: `npx playwright install chromium webkit`.
 | Unit (pure game logic)    | `tests/unit/**/*.test.ts`   | Vitest, Node      |
 | Module (DOM-ish, no Pixi) | `tests/module/**/*.test.ts` | Vitest, happy-dom |
 | Simulation regression     | `tests/sim/**/*.test.ts`    | Vitest, Node      |
-| End-to-end / visual / PWA | `tests/e2e/**/*.spec.ts`    | Playwright        |
+| End-to-end / PWA          | `tests/e2e/**/*.spec.ts`    | Playwright        |
 
 E2E tests import `test`/`expect` from `tests/e2e/fixtures.ts`, which fails any test that
 logs a console error or throws. They drive the game through `?seed=N&test=1`, which
@@ -56,10 +54,9 @@ exposes a read-only `window.__blowup` (snapshot, layout, frame costs) and freeze
 helpers are in `tests/e2e/helpers.ts`. Playwright runs with one worker: every browser
 renders WebGL in software, and parallel browsers starve each other.
 
-Visual baselines (`tests/visual/__screenshots__`) are rendered only on Linux in the pinned
-image (`VISUAL=1`); the weekly frame-cost job is `tests/perf` (`PERF=1`). The `pwa`
-project (`tests/pwa`, Chromium only) runs against `vite preview` of a `--mode test` build
-in `dist-test/`, which Playwright builds itself.
+The weekly frame-cost job is `tests/perf` (`PERF=1`). The `pwa` project (`tests/pwa`,
+Chromium only) runs against `vite preview` of a `--mode test` build in `dist-test/`, which
+Playwright builds itself.
 
 The start screen is plain HTML; the PixiJS renderer is a dynamic import created on the
 first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
@@ -122,6 +119,4 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 - Windows 11; Node 22. `origin` → `git@github.com:reinierf/block-blowup.git`, branch `main`.
 - `gh` is authenticated as `reinierf`.
-- AVG Antivirus intercepts TLS; Node trusts it via `NODE_EXTRA_CA_CERTS`, and
-  `scripts/docker-playwright.mjs` passes that certificate into the container.
-- Docker Desktop must be running for `npm run e2e:visual`.
+- AVG Antivirus intercepts TLS; Node trusts it via `NODE_EXTRA_CA_CERTS`.

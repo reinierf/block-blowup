@@ -8,13 +8,10 @@ export const PWA_DIST = 'dist-test';
 /**
  * Projects:
  * - pixel-7, iphone-14, desktop-chromium: end-to-end tests (tests/e2e).
- * - visual: screenshot baselines (tests/visual). Only with VISUAL=1, because baselines are
- *   rendered on Linux in the pinned Playwright image (CI, or `npm run e2e:visual`).
  * - perf: frame-time measurement (tests/perf). Only with PERF=1 (weekly perf.yml job).
  * - pwa: manifest, service worker, offline, update prompt (tests/pwa), against `vite preview`
  *   of a `--mode test` build. Chromium only: Playwright's WebKit has no service workers.
  */
-const visual = process.env.VISUAL === '1';
 const perf = process.env.PERF === '1';
 
 export default defineConfig({
@@ -24,9 +21,6 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
-  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
-  // Baselines render deterministically in the pinned image, so the tolerance is tight.
-  expect: { toHaveScreenshot: { maxDiffPixels: 50, scale: 'css', animations: 'disabled' } },
   use: {
     baseURL: `http://localhost:${PORT}/`,
     trace: 'retain-on-failure',
@@ -40,9 +34,6 @@ export default defineConfig({
       testDir: 'tests/pwa',
       use: { ...devices['Pixel 7'], baseURL: `http://localhost:${PWA_PORT}/block-blowup/` },
     },
-    ...(visual
-      ? [{ name: 'visual', testDir: 'tests/visual', use: { ...devices['Pixel 7'] } }]
-      : []),
     ...(perf
       ? [
           {

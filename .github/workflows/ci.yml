@@ -56,10 +56,10 @@ jobs:
           if-no-files-found: ignore
 
   e2e:
-    name: Playwright (e2e, visual, PWA)
+    name: Playwright (e2e, PWA)
     needs: check
     runs-on: ubuntu-latest
-    # Pinned image so browsers and visual baselines stay stable. Keep in sync with @playwright/test.
+    # Pinned image so browsers stay stable. Keep in sync with @playwright/test.
     container:
       image: mcr.microsoft.com/playwright:v1.64.1-noble
       options: --user 1001
@@ -70,11 +70,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: End-to-end + visual regression
+      - name: End-to-end + PWA
         run: npx playwright test
         env:
           CI: 'true'
-          VISUAL: '1'
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

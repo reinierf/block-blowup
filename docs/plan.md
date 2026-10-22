@@ -210,6 +210,12 @@ Public repo, so Actions minutes are free; still trimmed to keep runs fast and qu
 - Not done yet, worth it once work happens on branches: desktop-only e2e off `main`, and
   CI only for `main` pushes plus PRs.
 
+## Visual baselines removed (2026-10-22)
+
+- The screenshot tests (`tests/visual`, run in Docker) are gone: they failed on every
+  intended colour or layout tweak. Layout is still checked through the e2e geometry
+  assertions, and the PWA test reads manifest colours from the theme.
+
 ## Known issues
 
 - None open.

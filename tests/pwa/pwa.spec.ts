@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { test, expect } from '../e2e/fixtures';
 import { dragToCell, firstFit, snapshot } from '../e2e/helpers';
 import { PWA_DIST } from '../../playwright.config';
+import { theme } from '../../src/render/theme';
 import type { Page } from '@playwright/test';
 
 /** Load the app and wait until a service worker controls the page. */
@@ -26,8 +27,8 @@ test('the manifest has the required fields and its icons load', async ({ page, r
     short_name: 'Blowup',
     display: 'standalone',
     orientation: 'portrait',
-    theme_color: '#1c49c7',
-    background_color: '#5978cf',
+    theme_color: theme.bgTop,
+    background_color: theme.bgBottom,
   });
   const icons = manifest.icons as { src: string; sizes: string; purpose: string }[];
   for (const size of ['192x192', '512x512']) {

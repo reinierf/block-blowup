@@ -19,8 +19,6 @@
     "e2e": "playwright test",
     "sim:update": "tsx scripts/simulate.ts --update",
     "check:prod": "tsx scripts/check-prod-build.ts",
-    "e2e:visual": "node scripts/docker-playwright.mjs --project=visual",
-    "e2e:visual:update": "node scripts/docker-playwright.mjs --project=visual --update-snapshots",
     "icons": "tsx scripts/make-icons.ts",
     "lighthouse": "lhci autorun"
   },
