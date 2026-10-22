@@ -324,17 +324,27 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 
 ## 8b. Screens
 
-- **Start screen** (plain HTML, visible before any script runs): title, best score,
-  **Continue** (only when a saved game exists), **Play**, **Settings**. The PixiJS renderer
-  loads on the first Play/Continue (a moment, once; the service worker has it cached), so
-  launching is instant.
+- **Start screen:** a full-screen splash (plain HTML and CSS, visible before any script
+  runs) on the background gradient: a logo of tilted letter blocks in the block colours
+  (both rows arching up; scales with the viewport up to 400 px
+  wide, with at least 32 px either side) on a soft white glow with
+  faint rays turning once every two minutes (still when reducing motion), centred in the
+  space above the controls; in the lower third, the best score on a crown badge,
+  **Continue** (yellow, with the saved score; only when a saved game has at least one
+  move made) and **New game**; a gear for **Settings** in the corner. The PixiJS
+  renderer loads on the first New game/Continue (a moment, once; the service worker has
+  it cached), so launching is instant.
+- **Splash intro** (about 2 s, once per launch, `src/splash.ts`): BLOCK's tiles drop in
+  one by one, squash and bounce, then BLOWUP's; BLOWUP pops with a ring and a burst of 18
+  block particles as the glow blooms behind the logo; the badge and buttons pop in. A tap skips to the end. Skipped entirely
+  when reducing motion; returning to the menu shows the settled screen.
 - **Settings** (from the start screen or the HUD gear): Sound, Vibration (disabled with a
   note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
   and save immediately.
 - **Game over:** after the game-over sequence (or a tap that skips it), the score screen shows "New best!" when it
   applies, the score (large, Nunito with the HUD's shadow) and the best (with the crown),
   **Play again** and **Menu**.
-- **Look of all screens:** the game stays visible behind them, blurred (10 px, no dark
+- **Look of the other screens:** the game stays visible behind them, blurred (10 px, no dark
   scrim). Cards use the board's panel colour with rounded corners and a faint rim;
   headings, numbers and buttons are Nunito Bold, headings with the HUD's shadow; the best
   score shows with the crown. Buttons are chunky, with a darker bottom edge that presses

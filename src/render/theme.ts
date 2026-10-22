@@ -127,5 +127,7 @@ export function cssVariables(t: Theme = theme): Record<string, string> {
     '--score-shadow': t.scoreShadow,
     '--button': t.button,
     '--button-text': t.buttonText,
+    // Block colours, for the splash logo and its burst.
+    ...Object.fromEntries(Object.entries(t.blocks).map(([name, hex]) => [`--block-${name}`, hex])),
   };
 }

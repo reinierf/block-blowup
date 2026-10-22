@@ -6,7 +6,7 @@ import { AudioManager } from './audio';
 import { FEEDBACK, feedbackFor, type FeedbackPlan } from './feedback/plan';
 import { difficultyFor } from './game/difficulty';
 import { Mulberry32 } from './game/rng';
-import { restoreGame, saveGame, type SavedGame } from './game/save';
+import { hasProgress, restoreGame, saveGame, type SavedGame } from './game/save';
 import { Game, GameStatus, type TurnResult } from './game/state';
 import { createFullscreen } from './fullscreen';
 import { createHaptics } from './haptics';
@@ -16,6 +16,7 @@ import { computeLayout, fitScale, type Insets, type Layout } from './render/layo
 import type { Renderer } from './render/renderer';
 import { cssVariables, theme } from './render/theme';
 import { loadSettings, reduceMotion, saveSettings, type ReducedMotionSetting } from './settings';
+import { setupSplash } from './splash';
 import {
   clearSavedGame,
   loadHighScore,
@@ -43,6 +44,7 @@ const safeProbe = el('safe-probe');
 const startScreen = el('start');
 const startBest = el('start-best');
 const continueBtn = el<HTMLButtonElement>('continue');
+const continueScore = el('continue-score');
 const settingsScreen = el('settings');
 const soundToggle = el<HTMLInputElement>('set-sound');
 const hapticsToggle = el<HTMLInputElement>('set-haptics');
@@ -77,6 +79,19 @@ const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 const audio = new AudioManager({ muted: settings.muted });
 const haptics = createHaptics(navigator, settings.haptics);
 
+/** Reduce motion, or effects are frozen (test mode): CSS animations hold still too. */
+function stillMotion(): boolean {
+  return freezeAnimations || reduceMotion(settings, motionQuery.matches);
+}
+
+function applyMotionClass(): void {
+  document.documentElement.classList.toggle('reduce-motion', stillMotion());
+}
+applyMotionClass();
+
+// The start screen's intro plays once, unless reducing motion (or effects are frozen).
+setupSplash(startScreen, { animate: !stillMotion() });
+
 // iOS only lets audio start from a user gesture: unlock on the first pointer event.
 window.addEventListener('pointerdown', () => audio.unlock(), { capture: true, passive: true });
 
@@ -91,7 +106,7 @@ let lastFeedback: FeedbackPlan | null = null;
 let seed = 0;
 let random = new Mulberry32(0);
 /**
- * Until Play or Continue, a throwaway game (never saved) sits behind the start screen, so
+ * Until New game or Continue, a throwaway game (never saved) sits behind the start screen, so
  * launching never overwrites the saved game and doesn't use up the ?seed.
  */
 let game = new Game({ rng: random.next });
@@ -281,7 +296,9 @@ function showStart(): void {
   overlay.hidden = true;
   settingsScreen.hidden = true;
   startBest.textContent = String(highScore);
-  continueBtn.hidden = loadSavedGame() === null;
+  const saved = loadSavedGame();
+  continueBtn.hidden = saved === null || !hasProgress(saved);
+  if (saved) continueScore.textContent = String(saved.score);
   startScreen.hidden = false;
 }
 
@@ -341,6 +358,7 @@ function openSettings(fromStart: boolean): void {
 function applySettings(): void {
   audio.muted = settings.muted;
   haptics.enabled = settings.haptics;
+  applyMotionClass();
   saveSettings(settings);
 }
 

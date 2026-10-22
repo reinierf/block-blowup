@@ -9,10 +9,13 @@ import {
   snapshot,
 } from './helpers';
 
-test('start screen → Play starts the seeded game', async ({ page }) => {
+test('start screen → New game starts the seeded game', async ({ page }) => {
   await openApp(page, 7);
   await expect(page.locator('#start')).toBeVisible();
   await expect(page.locator('#continue')).toBeHidden(); // nothing saved yet
+  // Test mode freezes effects: the intro is skipped and the halo's rays stand still.
+  await expect(page.locator('#start')).not.toHaveClass(/intro/);
+  await expect(page.locator('html')).toHaveClass(/reduce-motion/);
   await page.click('#play');
   await expect(page.locator('#start')).toBeHidden();
   const snap = await snapshot(page);
@@ -29,6 +32,7 @@ test('reloading mid-game and tapping Continue resumes the same game', async ({ p
   await page.reload();
   await page.waitForFunction(() => !!window.__blowup?.layout());
   await expect(page.locator('#continue')).toBeVisible();
+  await expect(page.locator('#continue-score')).toHaveText(String(before.score));
   await continueGame(page);
   const after = await snapshot(page);
   expect(after.board).toEqual(before.board);
@@ -75,6 +79,19 @@ test('game over below the best score: no "New best!"', async ({ page }) => {
   await dragToCell(page, 0, 0, 0);
   await expect(page.locator('#overlay')).toBeVisible();
   await expect(page.locator('#new-best')).toBeHidden();
+});
+
+test('game over → Menu: no Continue for the fresh, untouched game', async ({ page }) => {
+  await page.addInitScript((save) => {
+    localStorage.setItem('block-blowup.game', JSON.stringify(save));
+  }, nearlyOverSave(500));
+  await openApp(page);
+  await continueGame(page);
+  await dragToCell(page, 0, 0, 0);
+  await expect(page.locator('#overlay')).toBeVisible();
+  await page.click('#to-menu');
+  await expect(page.locator('#start')).toBeVisible();
+  await expect(page.locator('#continue')).toBeHidden();
 });
 
 test('game over waits before the score screen; a tap skips the rest', async ({ page }) => {

@@ -1,7 +1,13 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { Mulberry32 } from '../../src/game/rng';
-import { SAVE_VERSION, parseSavedGame, restoreGame, saveGame } from '../../src/game/save';
+import {
+  SAVE_VERSION,
+  hasProgress,
+  parseSavedGame,
+  restoreGame,
+  saveGame,
+} from '../../src/game/save';
 import { Game, GameStatus } from '../../src/game/state';
 
 /** All legal moves in a stable order. */
@@ -132,5 +138,16 @@ describe('parseSavedGame', () => {
     ['a two-slot hand', { ...valid(), hand: valid().hand.slice(1) }],
   ])('rejects %s', (_, data) => {
     expect(parseSavedGame(data)).toBeNull();
+  });
+});
+
+describe('hasProgress', () => {
+  it('is false for a fresh game and true after the first move', () => {
+    const random = new Mulberry32(1);
+    const game = new Game({ rng: random.next });
+    expect(hasProgress(saveGame(game, random.state))).toBe(false);
+    const [slot, ox, oy] = legalMoves(game)[0]!;
+    game.placeAt(slot, ox, oy);
+    expect(hasProgress(saveGame(game, random.state))).toBe(true);
   });
 });

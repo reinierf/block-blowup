@@ -66,19 +66,65 @@
         </div>
       </header>
 
-      <!-- Visible before any script runs, so the first paint is the start screen. -->
-      <section id="start" class="screen" aria-labelledby="start-title">
-        <div class="screen-card">
-          <h1 id="start-title" class="title">Block Blowup</h1>
-          <p class="best-line" aria-label="Best">
-            <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5zM5 18h14v2H5z" />
-            </svg>
-            <span id="start-best">0</span>
-          </p>
-          <button id="continue" type="button" hidden>Continue</button>
-          <button id="play" type="button">Play</button>
-          <button id="start-settings" class="secondary" type="button">Settings</button>
+      <!-- Visible before any script runs, so the first paint is the start screen. Its intro
+           (class `intro`) is CSS; src/splash.ts adds the burst and ends it. -->
+      <section id="start" class="screen splash intro" aria-labelledby="start-title">
+        <button
+          id="start-settings"
+          class="icon-button splash-gear"
+          type="button"
+          aria-label="Settings"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+              transform="translate(-1 0)"
+            />
+          </svg>
+        </button>
+
+        <div class="splash-content">
+          <div class="hero">
+            <!-- A soft glow with slowly turning rays; blooms with the burst. -->
+            <div class="halo" aria-hidden="true"></div>
+            <h1 id="start-title" class="logo">
+              <span class="visually-hidden">Block Blowup</span>
+              <span class="logo-row logo-block" aria-hidden="true">
+                <span class="tile" style="--x: -2; --c: var(--block-red); --tilt: -5deg">B</span>
+                <span class="tile" style="--x: -1; --c: var(--block-orange); --tilt: 3deg">L</span>
+                <span class="tile" style="--x: 0; --c: var(--block-yellow); --tilt: -2deg">O</span>
+                <span class="tile" style="--x: 1; --c: var(--block-green); --tilt: 4deg">C</span>
+                <span class="tile" style="--x: 2; --c: var(--block-cyan); --tilt: -3deg">K</span>
+              </span>
+              <span class="logo-row logo-blowup" aria-hidden="true">
+                <span class="burst"></span>
+                <span class="tile" style="--x: -2.5; --c: var(--block-blue); --tilt: 3deg">B</span>
+                <span class="tile" style="--x: -1.5; --c: var(--block-purple); --tilt: -4deg"
+                  >L</span
+                >
+                <span class="tile" style="--x: -0.5; --c: var(--block-red); --tilt: 2deg">O</span>
+                <span class="tile" style="--x: 0.5; --c: var(--block-orange); --tilt: -3deg"
+                  >W</span
+                >
+                <span class="tile" style="--x: 1.5; --c: var(--block-yellow); --tilt: 5deg">U</span>
+                <span class="tile" style="--x: 2.5; --c: var(--block-green); --tilt: -2deg">P</span>
+              </span>
+            </h1>
+          </div>
+          <div class="splash-bottom">
+            <p class="best-badge" aria-label="Best">
+              <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5zM5 18h14v2H5z" />
+              </svg>
+              <span id="start-best">0</span>
+            </p>
+            <div class="splash-actions">
+              <button id="continue" class="continue" type="button" hidden>
+                <span>Continue</span><span id="continue-score" class="pill">0</span>
+              </button>
+              <button id="play" type="button">New game</button>
+            </div>
+          </div>
         </div>
       </section>
 

@@ -61,7 +61,7 @@ Chromium only) runs against `vite preview` of a `--mode test` build in `dist-tes
 Playwright builds itself.
 
 The start screen is plain HTML; the PixiJS renderer is a dynamic import created on the
-first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
+first New game/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 ## Conventions — please follow
 
@@ -110,6 +110,7 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 | `src/haptics.ts`               | Feature-detected vibration                          |
 | `src/settings.ts`              | Mute / haptics / reduced-motion settings            |
 | `src/fullscreen.ts`            | Fullscreen toggle (browser tabs only)               |
+| `src/splash.ts`                | Start screen intro: burst particles, skip, end      |
 | `tests/`                       | Vitest + Playwright suites (see above)              |
 | `.github/workflows/ci.yml`     | CI pipeline + Pages deploy                          |
 | `.github/workflows/perf.yml`   | Weekly performance job (also runnable by hand)      |

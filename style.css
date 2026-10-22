@@ -273,6 +273,426 @@ body {
   font-size: 18px;
 }
 
+/* --- Start screen: a full-screen splash ------------------------------------------ */
+/* Own background (no blurred game behind it). The logo, on a soft glow with slowly turning
+   rays, fills the space above; the best score and big buttons sit in the lower third, in
+   thumb reach. The intro (`.intro`, below) plays once per launch. */
+.splash {
+  overflow: hidden;
+  place-items: stretch;
+  padding: max(56px, calc(env(safe-area-inset-top) + 48px)) 12px
+    max(40px, calc(env(safe-area-inset-bottom) + 28px));
+  background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.splash-content {
+  position: relative;
+  top: -10px;
+  z-index: 1;
+  justify-self: center;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 24px;
+  width: min(100%, 440px);
+}
+
+/* The logo, centred in the space above the buttons, then 10px closer to the score. */
+.hero {
+  position: relative;
+  top: 10px;
+  display: grid;
+  place-items: center;
+}
+
+.halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(150vw, 760px);
+  aspect-ratio: 1;
+  margin-left: calc(min(150vw, 760px) / -2);
+  margin-top: calc(min(150vw, 760px) / -2);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.28), transparent 70%);
+  pointer-events: none;
+}
+
+.halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.09) 0deg 9deg, transparent 9deg 18deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 15%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 15%, transparent 100%);
+  animation: spin 120s linear infinite;
+  will-change: transform;
+}
+
+/* Reduced motion (main.ts sets the class): the rays stand still. */
+.reduce-motion .halo::before {
+  animation: none;
+}
+
+.splash-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  /* Lifted clear of the bottom edge, into thumb reach. */
+  margin-bottom: 55px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A bevelled block like the board's: lighter top edge, darker bottom, soft gloss. Size --s,
+   colour --c. */
+.tile {
+  border-radius: calc(var(--s) * 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 55%), var(--c);
+  box-shadow:
+    inset 0 calc(var(--s) * 0.07) 0 rgba(255, 255, 255, 0.28),
+    inset 0 calc(var(--s) * -0.1) 0 rgba(0, 0, 0, 0.26),
+    inset calc(var(--s) * -0.06) 0 0 rgba(0, 0, 0, 0.12);
+}
+
+/* Six tiles span the viewport less a 32px margin each side, up to 400px. --overlap > 0
+   overlaps them like a stack of blocks; < 0 spaces them. Both rows arch up:
+   each tile drops by --bend × --x² tile sizes (--x: its place from the row's
+   centre) and turns --turn × --x along the curve. */
+.logo {
+  --overlap: 0px;
+  --s: calc((min(400px, 100vw - 64px) + 5 * var(--overlap)) / 6);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+
+.logo-row {
+  position: relative;
+  display: flex;
+}
+
+/* --half: half the tiles but one, so --x + --half counts tiles from the left. */
+.logo-block {
+  --row-delay: 100ms;
+  --half: 2;
+  --bend: 0.09;
+  --turn: 9deg;
+}
+
+.logo-blowup {
+  --row-delay: 450ms;
+  --half: 2.5;
+  --bend: 0.108;
+  --turn: 12.5deg;
+}
+
+/* Gaps can't be negative: overlap with margins. */
+.logo-row + .logo-row {
+  margin-top: calc(var(--s) * 0.16 + 12px - var(--overlap));
+}
+
+.tile + .tile {
+  margin-left: calc(var(--overlap) * -1);
+}
+
+.tile {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--s);
+  height: var(--s);
+  padding-bottom: calc(var(--s) * 0.08);
+  color: var(--text);
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: calc(var(--s) * 0.62);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
+  box-shadow:
+    inset 0 calc(var(--s) * 0.07) 0 rgba(255, 255, 255, 0.28),
+    inset 0 calc(var(--s) * -0.1) 0 rgba(0, 0, 0, 0.26),
+    inset calc(var(--s) * -0.06) 0 0 rgba(0, 0, 0, 0.12),
+    0 6px 14px var(--score-shadow);
+  translate: 0 calc(var(--x) * var(--x) * var(--bend) * var(--s));
+  rotate: calc(var(--x) * var(--turn));
+  transform: rotate(var(--tilt));
+  transform-origin: 50% 100%;
+}
+
+.splash-gear {
+  position: absolute;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(4px, env(safe-area-inset-right));
+  z-index: 2;
+  color: var(--text);
+}
+
+.best-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 18px 8px 14px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 2px 3px 3px var(--score-shadow);
+}
+
+.splash-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 250px);
+  margin-top: 8px;
+}
+
+/* Lighter than the logo: it is the star of the screen. */
+.splash-actions button {
+  min-height: 52px;
+  /* Base padding is 13px top, 17px bottom; the label sits 1px lower here. */
+  padding-top: 14px;
+  padding-bottom: 16px;
+  font-size: 19px;
+}
+
+.splash-actions .continue {
+  gap: 12px;
+  background: var(--accent);
+}
+
+/* The saved game's score on the Continue button. */
+.pill {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.14);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The intro, about 2 s: BLOCK's tiles drop in and bounce, then BLOWUP's, which pops with
+   a burst of blocks (src/splash.ts adds them) as the glow blooms behind it; the badge and
+   buttons pop in.
+   `both` fill keeps everything hidden until its turn. splash.ts removes `.intro` when
+   `splash-done` ends, on a tap, or at once when reducing motion. */
+.splash.intro {
+  animation: splash-done 2.3s linear both;
+}
+
+.intro .tile {
+  animation: tile-drop 0.7s both;
+  animation-delay: calc(var(--row-delay) + (var(--x) + var(--half)) * 70ms);
+}
+
+.intro .logo-blowup {
+  animation: blowup-pop 0.5s ease-out 1.2s both;
+}
+
+.intro .halo {
+  animation: bloom 0.9s ease-out 1.2s both;
+}
+
+.intro .best-badge {
+  animation: pop-in 0.45s ease-out 1.4s both;
+}
+
+.intro .splash-actions > * {
+  animation: rise-in 0.55s ease-out both;
+}
+
+.intro .splash-actions > :nth-child(1) {
+  animation-delay: 1.5s;
+}
+
+.intro .splash-actions > :nth-child(2) {
+  animation-delay: 1.6s;
+}
+
+.intro .splash-gear {
+  animation: fade-in 0.4s ease-out 1.7s both;
+}
+
+.burst {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+}
+
+.burst i {
+  position: absolute;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2);
+  border-radius: 3px;
+  background: var(--c);
+  animation: particle-fly 0.8s cubic-bezier(0.15, 0.7, 0.3, 1) 1.2s both;
+}
+
+/* A ring that flashes out from the burst. */
+.intro .burst::before {
+  content: '';
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  margin: -20px;
+  border-radius: 50%;
+  border: 3px solid var(--text);
+  animation: ring-out 0.6s ease-out 1.2s both;
+}
+
+@keyframes splash-done {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
+/* Falls (ease-in), squashes on landing, bounces twice, settles at its tilt. */
+@keyframes tile-drop {
+  0% {
+    transform: translateY(-110vh) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5);
+  }
+  55% {
+    transform: translateY(0) rotate(var(--tilt)) scale(1.14, 0.8);
+    animation-timing-function: ease-out;
+  }
+  72% {
+    transform: translateY(-18%) rotate(var(--tilt)) scale(0.94, 1.07);
+    animation-timing-function: ease-in;
+  }
+  86% {
+    transform: translateY(0) rotate(var(--tilt)) scale(1.05, 0.95);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: translateY(0) rotate(var(--tilt));
+  }
+}
+
+@keyframes blowup-pop {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.2);
+  }
+  60% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes particle-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  1% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.4);
+  }
+}
+
+@keyframes ring-out {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  1% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(8);
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(48px);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-8px);
+  }
+  80% {
+    transform: translateY(3px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Settings controls: rows like the toggles below, then a segmented control on a recessed
    track, the selected option green like a switch that is on. */
 .toggle {

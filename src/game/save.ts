@@ -52,6 +52,14 @@ export function restoreGame(state: GameState, rng: Rng): Game {
   return new Game({ rng, initial: state });
 }
 
+/**
+ * Whether a save holds a game worth continuing: at least one move made. A fresh game is
+ * saved too (before any move), but offering to continue an empty board is pointless.
+ */
+export function hasProgress(state: GameState): boolean {
+  return state.score > 0 || state.board.some((row) => row.some((c) => c !== null));
+}
+
 const isInt = (x: unknown): x is number => Number.isInteger(x) && (x as number) >= 0;
 
 /**
