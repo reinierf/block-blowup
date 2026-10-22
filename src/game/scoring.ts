@@ -1,26 +1,23 @@
 // src/game/scoring.ts
-// All scoring rules in one place so they are easy to read and tune.
+// Scoring formulas. The numbers they use live in config.ts.
 // Pure module: no DOM, no rendering.
 
+import { LINE_POINTS, PLACE_POINTS_PER_CELL, comboMultiplierFor } from './config';
 import type { Shape } from './pieces';
 
-/**
- * Base points for clearing N lines *simultaneously* (index = lines cleared).
- * Capped at the last entry for 4+ line clears.
- */
-export const LINE_POINTS: readonly number[] = [0, 10, 40, 90, 160];
+export { LINE_POINTS };
 
-/** Points for simply placing a piece: one per cell. */
+/** Points for simply placing a piece. */
 export function placementPoints(shape: Shape): number {
-  return shape.cells.length;
+  return shape.cells.length * PLACE_POINTS_PER_CELL;
 }
 
 /**
  * Multiplier applied to a clear, based on the current combo streak.
- * combo is the count of *consecutive* clearing placements (1 = first clear, no bonus).
+ * combo is the count of clearing placements in the current streak (1 = first clear, no bonus).
  */
 export function comboMultiplier(combo: number): number {
-  return 1 + 0.5 * Math.max(0, combo - 1);
+  return comboMultiplierFor(combo);
 }
 
 /** Points awarded for clearing `lines` lines while on combo streak `combo`. */

@@ -71,7 +71,8 @@ The number of lines cleared is `rows.length + cols.length`.
 
 ## 5. Scoring
 
-Scoring lives in `src/game/scoring.ts` and is intentionally easy to tune.
+Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
+`src/game/config.ts`.
 
 1. **Placement points** — equal to the number of cells in the piece placed
    (a 4-cell piece gives 4 points just for being placed). This rewards keeping the board
