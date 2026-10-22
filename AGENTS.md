@@ -1,77 +1,85 @@
 # AGENTS.md
 
-Orientation for AI coding agents (and humans) working in this repository. Read this first.
+Orientation for AI coding agents (and humans) working in this repository. Read this first,
+then `HANDOVER.md` for the full research, specs and phased plan.
 
 ## What this is
 
-An open-source clone of the mobile puzzle game **Block Blast**. A single-page HTML5 Canvas
-game written in **vanilla JavaScript (ES modules)**.
+**Block Blowup**: a mobile-first PWA block puzzle game closely modelled on Block Blast!
+For **personal use only**. Forked from the MIT-licensed
+[SSWheatley/block_blast](https://github.com/SSWheatley/block_blast) (not tracked upstream).
 
-- **No frameworks, no build step, no dependencies.** Deliberately.
-- **MIT licensed.**
-- Live: <https://sswheatley.github.io/block_blast/> · Repo: <https://github.com/SSWheatley/block_blast>
+- **Stack:** TypeScript (strict) + Vite + Vitest + Playwright. PixiJS (WebGL) renderer
+  from Phase 4; `vite-plugin-pwa` from Phase 7. No UI frameworks, no game engines.
+- **Repo:** <https://github.com/reinierf/block-blast> (the name `block-blowup` is used for
+  the package name and storage-key prefix only).
+- **Deploys** to GitHub Pages from `main`, only when every CI job is green. Vite's `base`
+  is `/block-blast/` for builds.
 
-## Run & verify
-
-The game uses ES modules, so it must be served over `http://` (opening `index.html` as a
-`file://` path will fail).
+## Commands
 
 ```bash
-python3 -m http.server 8080      # or: npx serve . -l 8080
-# then open http://localhost:8080
+npm install
+npm run dev          # Vite dev server, reachable on the LAN (try it on a phone)
+npm run build        # typecheck + production build into dist/
+npm run preview      # serve dist/
+npm test             # all Vitest projects (unit, module, sim)
+npm run coverage     # Vitest with coverage for src/game/
+npm run typecheck
+npm run lint         # ESLint + Prettier check (npm run format to fix)
+npm run e2e          # Playwright: Pixel 7, iPhone 14 (WebKit), desktop Chromium
+npm run sim          # simulation harness (Phase 1+)
 ```
 
-There is **no build, lint, or test step**. Ways to verify work:
+First Playwright run on a new machine: `npx playwright install chromium webkit`.
 
-- **Logic only (no browser):** everything in `src/game/` is pure ES modules and runs in
-  plain Node, e.g.
-  `node --input-type=module -e "import('./src/game/state.js').then(m => console.log(new m.Game().score))"`.
-- **Visual:** take a headless screenshot (Chromium is usually available on this machine):
+## Tests
 
-  ```bash
-  chromium --headless --no-sandbox --disable-gpu --hide-scrollbars \
-    --window-size=430,932 --force-device-scale-factor=2 --virtual-time-budget=4500 \
-    --screenshot=/tmp/shot.png http://localhost:8080/
-  ```
+| Layer                     | Where                       | Runner            |
+| ------------------------- | --------------------------- | ----------------- |
+| Unit (pure game logic)    | `tests/unit/**/*.test.ts`   | Vitest, Node      |
+| Module (DOM-ish, no Pixi) | `tests/module/**/*.test.ts` | Vitest, happy-dom |
+| Simulation regression     | `tests/sim/**/*.test.ts`    | Vitest, Node      |
+| End-to-end / visual / PWA | `tests/e2e/**/*.spec.ts`    | Playwright        |
+
+E2E tests import `test`/`expect` from `tests/e2e/fixtures.ts`, which fails any test that
+logs a console error or throws.
 
 ## Conventions — please follow
 
-1. **Keep `src/game/` pure.** No DOM, no canvas, no browser APIs — it must keep running in
-   plain Node. Rendering (`src/render/`) and input (`src/input.js`) live outside it.
-2. **No dependencies / no build step.** Don't introduce a bundler, framework, or npm
-   runtime dependency for the game itself.
-3. **Keep docs in sync.** If you change behavior, update `docs/game-design.md` so it
-   describes what the code *actually* does. Update `docs/plan.md` progress as phases move.
-4. **Style:** 2-space indentation, ES modules, JSDoc where it clarifies. Match surrounding code.
+1. **`src/game/` stays pure.** No DOM, no Pixi, no `Math.random`, no timers. All randomness
+   goes through the RNG passed in by the caller. ESLint enforces the main cases.
+2. **Every behaviour change ships with tests** in the same commit. Never skip or loosen a
+   test to get CI green. Bug fixes start with a failing test.
+3. **Tunable gameplay numbers** go in `src/game/config.ts` (Phase 2+); **colours** in the
+   theme module (Phase 4+).
+4. **Keep docs in sync.** `docs/game-design.md` describes what the code _actually_ does;
+   `docs/plan.md` tracks phase progress.
+5. **Style:** Prettier (2 spaces, single quotes, width 100), ES modules, JSDoc/TSDoc where it
+   clarifies. Line endings are LF (`.gitattributes`).
 
 ## Layout
 
-| Path | Responsibility |
-|---|---|
-| `index.html`, `style.css` | Page shell, theme, HUD, game-over overlay |
-| `src/main.js` | Bootstrap, game loop, wiring, HUD/overlay, effects |
-| `src/input.js` | Pointer-based drag & drop (mouse + touch, one path) |
-| `src/storage.js` | High-score persistence (`localStorage`) |
-| `src/game/pieces.js` | Shape set, palette, bag RNG |
-| `src/game/board.js` | 8×8 grid, placement validation, line clearing |
-| `src/game/scoring.js` | Scoring formulas (tunable) |
-| `src/game/state.js` | Game state machine, hand management |
-| `src/render/layout.js` | Viewport geometry (shared by renderer + input) |
-| `src/render/renderer.js` | All canvas drawing |
-| `docs/plan.md` | Roadmap, architecture, phase progress |
-| `docs/game-design.md` | How the game works (rules, scoring, systems) |
-| `.github/workflows/pages.yml` | Auto-deploy to GitHub Pages on push to `main` |
-
-## Current status
-
-- Phases 1–3 complete (scaffold, pure logic, rendering + input). Phase 4 (polish) mostly
-  done; Phase 5 (packaging + hosting) complete.
-- **Deploys automatically:** any push to `main` publishes the site via GitHub Pages.
-- Open ideas: title/start screen, PWA (installable + offline), sound effects, screen shake.
-- Full details and the phase checklist live in [`docs/plan.md`](docs/plan.md).
+| Path                            | Responsibility                                      |
+| ------------------------------- | --------------------------------------------------- |
+| `index.html`, `style.css`       | Page shell, theme, HUD, game-over overlay           |
+| `src/main.ts`                   | Bootstrap, game loop, wiring, HUD/overlay, effects  |
+| `src/input.ts`                  | Pointer-based drag & drop (mouse + touch, one path) |
+| `src/storage.ts`                | High-score persistence (`localStorage`)             |
+| `src/game/pieces.ts`            | Shape set, palette, bag generator                   |
+| `src/game/board.ts`             | 8×8 grid, placement validation, line clearing       |
+| `src/game/scoring.ts`           | Scoring formulas                                    |
+| `src/game/state.ts`             | Game state machine, hand management                 |
+| `src/render/layout.ts`          | Viewport geometry (shared by renderer + input)      |
+| `src/render/renderer.ts`        | Canvas 2D drawing (replaced by PixiJS in Phase 4)   |
+| `tests/`                        | Vitest + Playwright suites (see above)              |
+| `.github/workflows/ci.yml`      | CI pipeline + Pages deploy                          |
+| `.github/workflows/nightly.yml` | Nightly performance job                             |
+| `docs/plan.md`                  | Roadmap and phase progress                          |
+| `docs/game-design.md`           | How the game works (rules, scoring, systems)        |
+| `HANDOVER.md`                   | Research, specs and the phased plan                 |
 
 ## Environment notes (this machine)
 
-- Not originally a git repo; now `origin` → `git@github.com:SSWheatley/block_blast.git`, branch `main`.
-- Git identity: Jake Vince. GitHub CLI (`gh`) is installed but **not authenticated**.
-- GitLab CLI (`glab`) is not installed (it is in the Arch `extra` repo if ever needed).
+- Windows 11; Node 22. `origin` → `git@github.com:reinierf/block-blast.git`, branch `main`.
+- `gh` is authenticated as `reinierf`.

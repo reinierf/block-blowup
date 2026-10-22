@@ -1,6 +1,6 @@
-# Game Design & Behavior — Block Blast Clone
+# Game Design & Behavior — Block Blowup
 
-> **Living document.** This describes how the game *actually* works, updated as features
+> **Living document.** This describes how the game _actually_ works, updated as features
 > are built. If something here disagrees with the code, the code wins — fix this doc.
 > See [`docs/plan.md`](./plan.md) for the roadmap.
 
@@ -10,7 +10,7 @@ A single-player, endless puzzle game. An 8×8 grid; you drag block pieces from a
 three onto the board. Filling an entire row or column clears it and awards points. The
 game continues until none of your remaining pieces can be placed anywhere.
 
-There is no timer and no losing by running out of space *gradually* — you only lose the
+There is no timer and no losing by running out of space _gradually_ — you only lose the
 moment the board is so full that the current hand has no legal move.
 
 ## 2. Board
@@ -23,6 +23,7 @@ moment the board is so full that the current hand has no legal move.
   top-left corner.
 
 ### Placement rules
+
 A piece may be placed with its top-left at `(ox, oy)` only if **every** cell of the shape
 lands on an in-bounds, currently-empty cell. Pieces cannot rotate, cannot overlap, and
 cannot hang off the edge.
@@ -34,31 +35,33 @@ wider variety (including straight lines up to 5 long, larger squares, corners, T
 shapes, and big L-shapes). Each shape is always drawn in a consistent color derived from
 its shape id.
 
-The full shape set lives in `src/game/pieces.js` (`SHAPES`). 33 shapes, including:
+The full shape set lives in `src/game/pieces.ts` (`SHAPES`). 33 shapes, including:
 
-| Family | Examples |
-|---|---|
-| Single | 1×1 |
-| Lines | length 2–5, horizontal and vertical |
-| Squares | 2×2, 3×3 |
-| Rectangles | 2×3, 3×2 |
-| Small corners | 3-cell L (4 orientations) |
-| L / J | 4-cell L (4 orientations) |
-| T | 4 orientations |
-| S / Z | 2 orientations each |
-| Big L | 5-cell L (4 orientations) |
+| Family        | Examples                            |
+| ------------- | ----------------------------------- |
+| Single        | 1×1                                 |
+| Lines         | length 2–5, horizontal and vertical |
+| Squares       | 2×2, 3×3                            |
+| Rectangles    | 2×3, 3×2                            |
+| Small corners | 3-cell L (4 orientations)           |
+| L / J         | 4-cell L (4 orientations)           |
+| T             | 4 orientations                      |
+| S / Z         | 2 orientations each                 |
+| Big L         | 5-cell L (4 orientations)           |
 
 ### Hand generation (the "bag")
+
 - You always hold **3 pieces** at a time.
 - Pieces come from a **shuffled bag** of all shapes (`PieceBag`). The bag is dealt without
   replacement and reshuffled when emptied — this avoids long streaks of the same shape and
   keeps the distribution fair (the classic Tetris "7-bag" idea).
 - When all three slots are used up, a fresh hand of three is dealt automatically.
-- RNG is injectable (`new Game({ rng })`) so behavior can be made deterministic later.
+- The RNG is required and supplied by the caller (`new Game({ rng })`), so a seeded RNG makes a game fully deterministic. The app currently passes `Math.random`.
 
 ## 4. Clearing lines
 
 After a placement, the game checks every row and every column:
+
 - A row clears if all 8 of its cells are filled.
 - A column clears if all 8 of its cells are filled.
 - **Rows and columns clear in the same step**, and cells counted by both are only cleared
@@ -68,7 +71,7 @@ The number of lines cleared is `rows.length + cols.length`.
 
 ## 5. Scoring
 
-Scoring lives in `src/game/scoring.js` and is intentionally easy to tune.
+Scoring lives in `src/game/scoring.ts` and is intentionally easy to tune.
 
 1. **Placement points** — equal to the number of cells in the piece placed
    (a 4-cell piece gives 4 points just for being placed). This rewards keeping the board
@@ -96,13 +99,13 @@ Scoring lives in `src/game/scoring.js` and is intentionally easy to tune.
 ## 6. Game over
 
 Checked after each placement (and after a hand is refilled): if **no** piece currently in
-the hand can be placed anywhere on the board, the game ends. Note it's the *current hand*
+the hand can be placed anywhere on the board, the game ends. Note it's the _current hand_
 that matters — if two of your three pieces still fit, you keep playing.
 
 ## 7. Controls
 
 - **Drag and drop** a piece from the hand onto the board using Pointer Events, so mouse,
-  touch, and pen all use one code path (`src/input.js`).
+  touch, and pen all use one code path (`src/input.ts`).
 - While dragging, a **ghost preview** shows where the piece would land:
   - **Green** = valid placement.
   - **Red** = blocked / out of bounds.
@@ -123,23 +126,24 @@ that matters — if two of your three pieces still fit, you keep playing.
 
 ## 9. Persistence
 
-- Only the **high score** is saved, in `localStorage` under the key `blockblast.highscore`
-  (`src/storage.js`). No accounts, no network, no telemetry.
+- Only the **high score** is saved, in `localStorage` under the key `block-blowup.highscore`
+  (`src/storage.ts`). No accounts, no network, no telemetry.
 
 ## 10. Code map
 
-| File | Responsibility |
-|---|---|
-| `src/main.js` | Bootstrap, game loop, wiring, effects spawning, HUD/overlay |
-| `src/game/pieces.js` | Shape set, palette, bag RNG |
-| `src/game/board.js` | 8×8 grid, collision/placement, line detection & clearing |
-| `src/game/scoring.js` | Placement points, line-clear points, combo multiplier |
-| `src/game/state.js` | Game state machine, hand management, turn resolution |
-| `src/render/layout.js` | Geometry (board + hand) for a given viewport size |
-| `src/render/renderer.js` | All canvas drawing (board, hand, ghost, effects) |
-| `src/input.js` | Pointer-based drag & drop |
-| `src/storage.js` | High-score persistence |
+| File                     | Responsibility                                              |
+| ------------------------ | ----------------------------------------------------------- |
+| `src/main.ts`            | Bootstrap, game loop, wiring, effects spawning, HUD/overlay |
+| `src/game/pieces.ts`     | Shape set, palette, bag RNG                                 |
+| `src/game/board.ts`      | 8×8 grid, collision/placement, line detection & clearing    |
+| `src/game/scoring.ts`    | Placement points, line-clear points, combo multiplier       |
+| `src/game/state.ts`      | Game state machine, hand management, turn resolution        |
+| `src/render/layout.ts`   | Geometry (board + hand) for a given viewport size           |
+| `src/render/renderer.ts` | All canvas drawing (board, hand, ghost, effects)            |
+| `src/input.ts`           | Pointer-based drag & drop                                   |
+| `src/storage.ts`         | High-score persistence                                      |
 
 ### Design rule
+
 Everything under `src/game/` is **pure** — no DOM, no canvas, no browser APIs. It can be
 run in Node and unit-tested directly. Rendering and input live outside it.

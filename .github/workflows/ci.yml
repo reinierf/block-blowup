@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, unit tests, simulation, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: ESLint + Prettier
+        run: npm run lint
+      - name: Unit + module tests with coverage
+        run: npx vitest run --project unit --project module --coverage
+      - name: Simulation regression
+        run: npx vitest run --project sim --passWithNoTests
+      - name: Build
+        run: npx vite build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: coverage-and-sim-report
+          path: |
+            coverage
+            sim-report*
+          if-no-files-found: ignore
+
+  e2e:
+    name: Playwright (e2e, visual, PWA)
+    needs: check
+    runs-on: ubuntu-latest
+    # Pinned image so browsers and visual baselines stay stable. Keep in sync with @playwright/test.
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright test
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+
+  lighthouse:
+    name: Lighthouse CI
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    steps:
+      # Turned on in Phase 7 (PWA). Passes trivially until then.
+      - run: echo "Lighthouse CI not configured yet"
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [check, e2e, lighthouse]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

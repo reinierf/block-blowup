@@ -1,31 +1,44 @@
-// src/main.js
+// src/main.ts
 // Bootstrap: wire up the canvas, game loop, input, HUD, effects, and overlays.
 
-import { Game, GameStatus } from './game/state.js';
-import { computeLayout } from './render/layout.js';
-import { drawBoard, drawHand, drawDraggingPiece, drawEffects } from './render/renderer.js';
-import { createInput } from './input.js';
-import { loadHighScore, saveHighScore } from './storage.js';
+import { Game, GameStatus, type TurnResult } from './game/state';
+import { computeLayout, type Layout } from './render/layout';
+import {
+  drawBoard,
+  drawHand,
+  drawDraggingPiece,
+  drawEffects,
+  type Effect,
+  type Particle,
+} from './render/renderer';
+import { createInput } from './input';
+import { loadHighScore, saveHighScore } from './storage';
 
 // --- DOM ---------------------------------------------------------------------
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-const scoreEl = document.getElementById('score');
-const bestEl = document.getElementById('best');
-const comboWrap = document.getElementById('combo-wrap');
-const comboEl = document.getElementById('combo');
-const overlay = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlay-title');
-const overlayMsg = document.getElementById('overlay-msg');
-const restartBtn = document.getElementById('restart');
+function el<T extends HTMLElement>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Missing #${id}`);
+  return node as T;
+}
+
+const canvas = el<HTMLCanvasElement>('game');
+const ctx = canvas.getContext('2d')!;
+const scoreEl = el('score');
+const bestEl = el('best');
+const comboWrap = el('combo-wrap');
+const comboEl = el('combo');
+const overlay = el('overlay');
+const overlayTitle = el('overlay-title');
+const overlayMsg = el('overlay-msg');
+const restartBtn = el<HTMLButtonElement>('restart');
 
 // --- State -------------------------------------------------------------------
 let cssW = 1;
 let cssH = 1;
-let layout = null;
+let layout: Layout | null = null;
 let highScore = loadHighScore();
-const game = new Game();
-const effects = [];
+const game = new Game({ rng: Math.random });
+const effects: Effect[] = [];
 
 const input = createInput({
   canvas,
@@ -35,7 +48,7 @@ const input = createInput({
 });
 
 // --- Sizing ------------------------------------------------------------------
-function resize() {
+function resize(): void {
   const rect = canvas.getBoundingClientRect();
   if (rect.width < 1 || rect.height < 1) return;
   const dpr = window.devicePixelRatio || 1;
@@ -48,7 +61,7 @@ function resize() {
 }
 
 // --- Gameplay callbacks ------------------------------------------------------
-function handlePlace(result) {
+function handlePlace(result: TurnResult): void {
   spawnEffects(result);
   if (game.score > highScore) {
     highScore = game.score;
@@ -60,7 +73,7 @@ function handlePlace(result) {
   }
 }
 
-function updateHud() {
+function updateHud(): void {
   scoreEl.textContent = String(game.score);
   bestEl.textContent = String(Math.max(highScore, game.score));
   if (game.combo > 1) {
@@ -71,7 +84,7 @@ function updateHud() {
   }
 }
 
-function showGameOver() {
+function showGameOver(): void {
   overlayTitle.textContent = 'Game Over';
   overlayMsg.textContent = `Score ${game.score}  ·  Best ${Math.max(highScore, game.score)}`;
   overlay.classList.remove('hidden');
@@ -85,14 +98,14 @@ restartBtn.addEventListener('click', () => {
 });
 
 // --- Effects -----------------------------------------------------------------
-function spawnEffects(result) {
+function spawnEffects(result: TurnResult): void {
   if (!layout || result.clearedCells.length === 0) return;
   const b = layout.board;
   const cell = b.cell;
 
   effects.push({ type: 'flash', t: 0, dur: 0.28, cells: result.clearedCells });
 
-  const parts = [];
+  const parts: Particle[] = [];
   for (const c of result.clearedCells) {
     const px = b.x + (c.x + 0.5) * cell;
     const py = b.y + (c.y + 0.5) * cell;
@@ -120,7 +133,7 @@ function spawnEffects(result) {
   });
 }
 
-function updateEffects(dt) {
+function updateEffects(dt: number): void {
   for (const e of effects) {
     e.t += dt;
     if (e.type === 'burst') {
@@ -132,12 +145,13 @@ function updateEffects(dt) {
     }
   }
   for (let i = effects.length - 1; i >= 0; i--) {
-    if (effects[i].t >= effects[i].dur) effects.splice(i, 1);
+    const e = effects[i]!;
+    if (e.t >= e.dur) effects.splice(i, 1);
   }
 }
 
 // --- Render + loop -----------------------------------------------------------
-function render() {
+function render(): void {
   ctx.clearRect(0, 0, cssW, cssH);
   if (!layout) return;
   const d = input.drag;
@@ -149,7 +163,7 @@ function render() {
 }
 
 let lastTime = performance.now();
-function frame(now) {
+function frame(now: number): void {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
   updateEffects(dt);

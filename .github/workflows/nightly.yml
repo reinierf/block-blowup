@@ -1,0 +1,18 @@
+name: Nightly performance
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  perf:
+    name: Frame-time benchmark (non-blocking)
+    runs-on: ubuntu-latest
+    steps:
+      # Real job (throttled Playwright drag, p50/p95 frame times, alert above 20 ms)
+      # arrives in Phase 4. Passes trivially until then.
+      - run: echo "Performance job not configured yet"

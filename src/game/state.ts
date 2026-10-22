@@ -1,20 +1,60 @@
-// src/game/state.js
+// src/game/state.ts
 // The game state machine: board + hand, turn resolution, scoring, game-over detection.
-// Pure module: no DOM, no rendering.
+// Pure module: no DOM, no rendering, no Math.random (the caller supplies the RNG).
 
-import { Board } from './board.js';
-import { SHAPES, PieceBag, colorFor } from './pieces.js';
-import { placementPoints, lineClearPoints } from './scoring.js';
+import { Board } from './board';
+import { SHAPES, PieceBag, colorFor, type Rng, type Shape } from './pieces';
+import { placementPoints, lineClearPoints } from './scoring';
 
 export const GameStatus = Object.freeze({
   PLAYING: 'playing',
   GAME_OVER: 'gameOver',
-});
+} as const);
+export type GameStatus = (typeof GameStatus)[keyof typeof GameStatus];
+
+export interface HandPiece {
+  uid: number;
+  shape: Shape;
+  color: string;
+}
+
+export interface ClearedCell {
+  x: number;
+  y: number;
+  color: string;
+}
+
+export interface TurnResult {
+  placedCells: [number, number][];
+  clearedCells: ClearedCell[];
+  rows: number[];
+  cols: number[];
+  lines: number;
+  combo: number;
+  points: number;
+  gameOver: boolean;
+}
+
+export interface GameOptions {
+  size?: number;
+  rng: Rng;
+}
 
 let uidCounter = 0;
 
 export class Game {
-  constructor({ size = 8, rng = Math.random } = {}) {
+  readonly size: number;
+  readonly rng: Rng;
+  readonly board: Board;
+  readonly bag: PieceBag;
+  /** Three slots; null once a slot's piece has been placed. */
+  hand: (HandPiece | null)[] = [null, null, null];
+  score = 0;
+  combo = 0;
+  bestCombo = 0;
+  status: GameStatus = GameStatus.PLAYING;
+
+  constructor({ size = 8, rng }: GameOptions) {
     this.size = size;
     this.rng = rng;
     this.board = new Board(size);
@@ -22,9 +62,8 @@ export class Game {
     this.reset();
   }
 
-  reset() {
+  reset(): void {
     this.board.reset();
-    /** @type {(null | {uid:number, shape:object, color:string})[]} three slots. */
     this.hand = [null, null, null];
     this.score = 0;
     this.combo = 0;
@@ -36,7 +75,7 @@ export class Game {
   }
 
   /** Fill all three hand slots from the bag. */
-  dealHand() {
+  dealHand(): void {
     this.hand = [0, 0, 0].map(() => {
       const shape = this.bag.next();
       return { uid: ++uidCounter, shape, color: colorFor(shape) };
@@ -44,31 +83,26 @@ export class Game {
   }
 
   /** Is placing hand slot `handIndex` at (ox, oy) legal? */
-  canPlace(handIndex, ox, oy) {
+  canPlace(handIndex: number, ox: number, oy: number): boolean {
     const slot = this.hand[handIndex];
     return !!slot && this.board.canPlace(slot.shape, ox, oy);
   }
 
   /**
    * Attempt to place a hand piece. On success: mutates the board, refills the hand if
-   * empty, updates score/combo, and checks for game over.
-   * @returns {null | {
-   *   placedCells: number[][], clearedCells: {x:number,y:number,color:string}[],
-   *   rows:number[], cols:number[], lines:number, combo:number, points:number,
-   *   gameOver:boolean
-   * }}
+   * empty, updates score/combo, and checks for game over. Returns null if illegal.
    */
-  placeAt(handIndex, ox, oy) {
+  placeAt(handIndex: number, ox: number, oy: number): TurnResult | null {
     const slot = this.hand[handIndex];
     if (!slot || !this.board.canPlace(slot.shape, ox, oy)) return null;
 
     this.board.place(slot.shape, ox, oy, slot.color);
     this.hand[handIndex] = null;
 
-    const placedCells = slot.shape.cells.map(([cx, cy]) => [ox + cx, oy + cy]);
+    const placedCells = slot.shape.cells.map(([cx, cy]): [number, number] => [ox + cx, oy + cy]);
 
     let points = placementPoints(slot.shape);
-    let clearedCells = [];
+    let clearedCells: ClearedCell[] = [];
 
     const { rows, cols } = this.board.fullLines();
     const lines = rows.length + cols.length;
@@ -76,7 +110,7 @@ export class Game {
     if (lines > 0) {
       this.combo += 1;
       if (this.combo > this.bestCombo) this.bestCombo = this.combo;
-      clearedCells = this._collectLineCells(rows, cols); // capture colors BEFORE clearing
+      clearedCells = this.collectLineCells(rows, cols); // capture colors BEFORE clearing
       points += lineClearPoints(lines, this.combo);
       this.board.clearLines(rows, cols);
     } else {
@@ -103,11 +137,11 @@ export class Game {
   }
 
   /** Is there at least one legal placement for some piece currently in hand? */
-  hasAnyMove() {
-    return this.hand.some((slot) => slot && this._canPlaceAnywhere(slot.shape));
+  hasAnyMove(): boolean {
+    return this.hand.some((slot) => slot !== null && this.canPlaceAnywhere(slot.shape));
   }
 
-  _canPlaceAnywhere(shape) {
+  private canPlaceAnywhere(shape: Shape): boolean {
     const maxX = this.size - shape.width;
     const maxY = this.size - shape.height;
     for (let oy = 0; oy <= maxY; oy++) {
@@ -119,9 +153,11 @@ export class Game {
   }
 
   /** Union of all cells in the given full rows/columns, with their colors, de-duplicated. */
-  _collectLineCells(rows, cols) {
-    const map = new Map();
-    const add = (x, y) => map.set(`${x},${y}`, { x, y, color: this.board.grid[y][x] });
+  private collectLineCells(rows: readonly number[], cols: readonly number[]): ClearedCell[] {
+    const map = new Map<string, ClearedCell>();
+    const add = (x: number, y: number): void => {
+      map.set(`${x},${y}`, { x, y, color: this.board.grid[y]![x]! });
+    };
     for (const y of rows) for (let x = 0; x < this.size; x++) add(x, y);
     for (const x of cols) for (let y = 0; y < this.size; y++) add(x, y);
     return [...map.values()];

@@ -1,8 +1,47 @@
-// src/render/renderer.js
+// src/render/renderer.ts
 // All canvas drawing: board, hand, drag piece, ghost preview, and transient effects.
 
+import type { Board } from '../game/board';
+import type { Shape } from '../game/pieces';
+import type { Game } from '../game/state';
+import type { DragState } from '../input';
+import type { Layout } from './layout';
+
+export interface Ghost {
+  shape: Shape;
+  ox: number;
+  oy: number;
+  valid: boolean;
+}
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  color: string;
+}
+
+interface EffectBase {
+  t: number;
+  dur: number;
+}
+
+export type Effect =
+  | (EffectBase & { type: 'flash'; cells: { x: number; y: number }[] })
+  | (EffectBase & { type: 'burst'; parts: Particle[] })
+  | (EffectBase & { type: 'popup'; x: number; y: number; text: string; sub: string });
+
 /** Rounded-rectangle path (works everywhere, no ctx.roundRect dependency). */
-function roundRect(ctx, x, y, w, h, r) {
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+): void {
   const rr = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.beginPath();
   ctx.moveTo(x + rr, y);
@@ -14,7 +53,7 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 /** Lighten (amount > 0) or darken (amount < 0) a #rrggbb color. */
-export function shade(hex, amount) {
+export function shade(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);
   let r = (n >> 16) & 255;
   let g = (n >> 8) & 255;
@@ -25,13 +64,23 @@ export function shade(hex, amount) {
     b += (255 - b) * amount;
   } else {
     const k = 1 + amount;
-    r *= k; g *= k; b *= k;
+    r *= k;
+    g *= k;
+    b *= k;
   }
   return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
 }
 
 /** Draw one glossy rounded block. */
-export function drawBlock(ctx, x, y, w, h, color, opts = {}) {
+export function drawBlock(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+  opts: { alpha?: number; radius?: number } = {},
+): void {
   const alpha = opts.alpha ?? 1;
   const r = opts.radius ?? Math.max(3, w * 0.22);
   ctx.save();
@@ -53,20 +102,26 @@ export function drawBlock(ctx, x, y, w, h, color, opts = {}) {
   ctx.restore();
 }
 
-/**
- * Draw the board panel, its cells, and (if dragging) the placement ghost.
- * @param {CanvasRenderingContext2D} ctx
- * @param {import('../game/board.js').Board} board
- * @param {object} layout from computeLayout()
- * @param {null | {shape:object, ox:number, oy:number, valid:boolean}} ghost
- */
-export function drawBoard(ctx, board, layout, ghost) {
+/** Draw the board panel, its cells, and (if dragging) the placement ghost. */
+export function drawBoard(
+  ctx: CanvasRenderingContext2D,
+  board: Board,
+  layout: Layout,
+  ghost: Ghost | null,
+): void {
   const b = layout.board;
   const cell = b.cell;
   const g = cell * 0.06;
 
   // Panel behind the grid.
-  roundRect(ctx, b.x - cell * 0.18, b.y - cell * 0.18, b.size + cell * 0.36, b.size + cell * 0.36, cell * 0.35);
+  roundRect(
+    ctx,
+    b.x - cell * 0.18,
+    b.y - cell * 0.18,
+    b.size + cell * 0.36,
+    b.size + cell * 0.36,
+    cell * 0.35,
+  );
   ctx.fillStyle = 'rgba(10, 13, 22, 0.6)';
   ctx.fill();
   ctx.lineWidth = 2;
@@ -79,7 +134,7 @@ export function drawBoard(ctx, board, layout, ghost) {
       const px = b.x + x * cell + g;
       const py = b.y + y * cell + g;
       const s = cell - 2 * g;
-      const color = board.grid[y][x];
+      const color = board.grid[y]![x];
       if (color) {
         drawBlock(ctx, px, py, s, s, color);
       } else {
@@ -111,10 +166,13 @@ export function drawBoard(ctx, board, layout, ghost) {
   }
 }
 
-/**
- * Draw the hand pieces into their slots (skipping the slot currently being dragged).
- */
-export function drawHand(ctx, game, layout, drag) {
+/** Draw the hand pieces into their slots (skipping the slot currently being dragged). */
+export function drawHand(
+  ctx: CanvasRenderingContext2D,
+  game: Game,
+  layout: Layout,
+  drag: DragState | null,
+): void {
   const handCell = layout.hand.cell;
   const g = handCell * 0.06;
   for (const slot of layout.hand.slots) {
@@ -125,29 +183,47 @@ export function drawHand(ctx, game, layout, drag) {
     const ox = slot.cx - (shape.width * handCell) / 2;
     const oy = slot.cy - (shape.height * handCell) / 2;
     for (const [cx, cy] of shape.cells) {
-      drawBlock(ctx, ox + cx * handCell + g, oy + cy * handCell + g, handCell - 2 * g, handCell - 2 * g, color);
+      drawBlock(
+        ctx,
+        ox + cx * handCell + g,
+        oy + cy * handCell + g,
+        handCell - 2 * g,
+        handCell - 2 * g,
+        color,
+      );
     }
   }
 }
 
 /** Draw the piece following the pointer, at full board block size. */
-export function drawDraggingPiece(ctx, drag, layout) {
+export function drawDraggingPiece(
+  ctx: CanvasRenderingContext2D,
+  drag: DragState,
+  layout: Layout,
+): void {
   const cell = layout.board.cell;
   const g = cell * 0.06;
   ctx.save();
   ctx.globalAlpha = 0.95;
   for (const [cx, cy] of drag.shape.cells) {
-    drawBlock(ctx, drag.originX + cx * cell + g, drag.originY + cy * cell + g, cell - 2 * g, cell - 2 * g, drag.color);
+    drawBlock(
+      ctx,
+      drag.originX + cx * cell + g,
+      drag.originY + cy * cell + g,
+      cell - 2 * g,
+      cell - 2 * g,
+      drag.color,
+    );
   }
   ctx.restore();
 }
 
-/**
- * Draw transient effects (line-clear flash, particle burst, floating score popup).
- * @param {Array<object>} effects each has {type, t, dur, ...}
- * @param {object} layout from computeLayout()
- */
-export function drawEffects(ctx, effects, layout) {
+/** Draw transient effects (line-clear flash, particle burst, floating score popup). */
+export function drawEffects(
+  ctx: CanvasRenderingContext2D,
+  effects: readonly Effect[],
+  layout: Layout,
+): void {
   const b = layout.board;
   const cell = b.cell;
   const g = cell * 0.06;
@@ -175,7 +251,7 @@ export function drawEffects(ctx, effects, layout) {
         ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
       }
       ctx.restore();
-    } else if (e.type === 'popup') {
+    } else {
       const rise = cell * 1.1 * p;
       ctx.save();
       ctx.globalAlpha = Math.min(1, (1 - p) * 1.8);
