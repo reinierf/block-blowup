@@ -1,6 +1,7 @@
 // src/main.ts
 // Bootstrap: wire up the canvas, game loop, input, HUD, effects, and overlays.
 
+import { Mulberry32 } from './game/rng';
 import { Game, GameStatus, type TurnResult } from './game/state';
 import { computeLayout, type Layout } from './render/layout';
 import {
@@ -37,7 +38,8 @@ let cssW = 1;
 let cssH = 1;
 let layout: Layout | null = null;
 let highScore = loadHighScore();
-const game = new Game({ rng: Math.random });
+const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+const game = new Game({ rng: new Mulberry32(seed).next });
 const effects: Effect[] = [];
 
 const input = createInput({

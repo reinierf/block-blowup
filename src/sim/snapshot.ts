@@ -20,6 +20,10 @@ export interface SimSnapshot {
   fillAt10: number;
   fillAt20: number;
   fillAt30: number;
+  avgFinalDifficulty: number;
+  redrawsPerDeal: number;
+  mercyRate: number;
+  fallbackRate: number;
 }
 
 type Metric = Exclude<keyof SimSnapshot, 'seeds'>;
@@ -36,6 +40,10 @@ export const TOLERANCES: Record<Metric, { rel?: number; abs?: number }> = {
   fillAt10: { abs: 0.05 },
   fillAt20: { abs: 0.05 },
   fillAt30: { abs: 0.05 },
+  avgFinalDifficulty: { abs: 0.05 },
+  redrawsPerDeal: { abs: 0.05 },
+  mercyRate: { abs: 0.02 },
+  fallbackRate: { abs: 0.01 },
 };
 
 const round = (x: number, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
@@ -53,6 +61,10 @@ export function toSnapshot(stats: BatchStats): SimSnapshot {
     fillAt10: round(stats.fillByMove[10] ?? 0),
     fillAt20: round(stats.fillByMove[20] ?? 0),
     fillAt30: round(stats.fillByMove[30] ?? 0),
+    avgFinalDifficulty: round(stats.avgFinalDifficulty),
+    redrawsPerDeal: round(stats.redrawsPerDeal),
+    mercyRate: round(stats.mercyRate),
+    fallbackRate: round(stats.fallbackRate),
   };
 }
 

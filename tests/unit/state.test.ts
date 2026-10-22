@@ -82,6 +82,7 @@ describe('Game: placement', () => {
       allClear: false,
       praise: null,
       points: 4,
+      deal: null,
       gameOver: false,
     });
     expect(g.score).toBe(4);
@@ -279,9 +280,9 @@ describe('Game: hand refill and game over', () => {
     expect(g.status).toBe(GameStatus.PLAYING);
   });
 
-  it('checks the freshly dealt hand for game over (it can be dead on arrival)', () => {
-    // Only isolated single holes remain, and seed 1's second hand (T-up, line2-h, square3)
-    // has no single, so the game ends right after the refill.
+  it('never deals a dead hand, even when only single holes are left', () => {
+    // Under the fork's bag this board ended the game on a fresh hand (no single in it).
+    // The generator's hard fairness rule now guarantees a piece that fits.
     const rows = [
       '#.#.#.#.',
       '.#.#.#.#',
@@ -294,9 +295,45 @@ describe('Game: hand refill and game over', () => {
     ];
     const g = setup(rows, [null, null, 'single']);
     const r = g.placeAt(2, 1, 0)!;
-    expect(g.hand.map((p) => p?.shape.name)).toEqual(['T-up', 'line2-h', 'square3']);
-    expect(r.gameOver).toBe(true);
-    expect(g.status).toBe(GameStatus.GAME_OVER);
+    expect(r.deal).not.toBeNull();
+    expect(g.hand.some((p) => p?.shape.name === 'single')).toBe(true);
+    expect(r.gameOver).toBe(false);
+    expect(g.status).toBe(GameStatus.PLAYING);
+  });
+
+  it('reports the deal in the turn result only when a new hand is dealt', () => {
+    const g = setup(EMPTY, ['single', 'single', 'single']);
+    expect(g.lastDeal).not.toBeNull();
+    expect(g.placeAt(0, 0, 0)!.deal).toBeNull();
+    expect(g.placeAt(1, 2, 0)!.deal).toBeNull();
+    const r = g.placeAt(2, 4, 0)!;
+    expect(r.deal).toBe(g.lastDeal);
+    expect(r.deal).toMatchObject({ requireSolvable: true, solvable: true, mercy: false });
+    expect(r.deal!.difficulty).toBeCloseTo(0.0012); // score 3 on the difficulty curve
+  });
+
+  it('counts hands in a row without a clear, for the mercy rule', () => {
+    const g = setup(bottomRowGap(1), ['single', 'single', 'single']);
+    const playHand = (clearFirst: boolean) => {
+      g.hand = ['single', 'single', 'single'].map((n, i) => ({
+        uid: i,
+        shape: shape(n),
+        color: 'x',
+      }));
+      g.placeAt(0, clearFirst ? 0 : 3, clearFirst ? 7 : 3);
+      g.placeAt(1, 3, 1);
+      g.placeAt(2, 5, 1);
+      g.board.grid[1]!.fill(null); // keep the board roomy
+      g.board.grid[3]!.fill(null);
+    };
+    playHand(false);
+    expect(g.handsWithoutClear).toBe(1);
+    playHand(false);
+    expect(g.handsWithoutClear).toBe(2);
+    expect(g.lastDeal!.mercyReason).toBe('drought');
+    g.board.grid[7] = [null, 'c', 'c', 'c', 'c', 'c', 'c', 'c'];
+    playHand(true);
+    expect(g.handsWithoutClear).toBe(0);
   });
 
   it('board after a clear keeps unrelated cells', () => {

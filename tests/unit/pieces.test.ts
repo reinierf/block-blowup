@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PALETTE, PieceBag, SHAPES, colorFor } from '../../src/game/pieces';
-import { lcg } from '../../src/sim/lcg';
+import { FAMILY_WEIGHTS } from '../../src/game/config';
+import { PALETTE, SHAPES, colorFor } from '../../src/game/pieces';
 
 describe('SHAPES', () => {
   it('has the 33 shapes of the fork, with sequential ids and unique names', () => {
@@ -38,6 +38,15 @@ describe('SHAPES', () => {
     expect(SHAPES.reduce((n, s) => n + s.cells.length, 0)).toBe(134);
   });
 
+  it('puts every shape in a family that has generator weights', () => {
+    const families = new Set(SHAPES.map((s) => s.family));
+    expect([...families].sort()).toEqual(Object.keys(FAMILY_WEIGHTS).sort());
+    const count = (f: string) => SHAPES.filter((s) => s.family === f).length;
+    expect([count('single'), count('line5'), count('corner'), count('SZ'), count('bigL')]).toEqual([
+      1, 2, 4, 4, 4,
+    ]);
+  });
+
   it('is frozen', () => {
     expect(Object.isFrozen(SHAPES)).toBe(true);
     expect(Object.isFrozen(SHAPES[0])).toBe(true);
@@ -50,35 +59,5 @@ describe('colorFor', () => {
     expect(colorFor(SHAPES[0]!)).toBe(PALETTE[0]);
     expect(colorFor(SHAPES[16]!)).toBe(PALETTE[0]);
     expect(colorFor(SHAPES[17]!)).toBe(PALETTE[1]);
-  });
-});
-
-describe('PieceBag', () => {
-  it('deals every shape exactly once per 33 draws, then refills', () => {
-    const bag = new PieceBag(SHAPES, lcg(7));
-    for (let round = 0; round < 3; round++) {
-      const ids = Array.from({ length: 33 }, () => bag.next().id).sort((a, b) => a - b);
-      expect(ids).toEqual([...Array(33).keys()]);
-    }
-  });
-
-  it('is deterministic for a given RNG', () => {
-    const draw = (seed: number) => {
-      const bag = new PieceBag(SHAPES, lcg(seed));
-      return Array.from({ length: 10 }, () => bag.next().name);
-    };
-    expect(draw(3)).toEqual(draw(3));
-    expect(draw(3)).not.toEqual(draw(4));
-  });
-
-  it('pins the first deal for seed 1', () => {
-    const bag = new PieceBag(SHAPES, lcg(1));
-    expect([bag.next().name, bag.next().name, bag.next().name]).toMatchInlineSnapshot(`
-      [
-        "line4-v",
-        "rect-2x3",
-        "corner-bl",
-      ]
-    `);
   });
 });

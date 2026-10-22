@@ -67,7 +67,13 @@ logs a console error or throws.
 | `src/main.ts`                   | Bootstrap, game loop, wiring, HUD/overlay, effects  |
 | `src/input.ts`                  | Pointer-based drag & drop (mouse + touch, one path) |
 | `src/storage.ts`                | High-score persistence (`localStorage`)             |
-| `src/game/pieces.ts`            | Shape set, palette, bag generator                   |
+| `src/game/pieces.ts`            | Shape set (with families), palette                  |
+| `src/game/config.ts`            | Every tunable gameplay number                       |
+| `src/game/rng.ts`               | Seeded RNG (mulberry32)                             |
+| `src/game/generator.ts`         | Hand dealing: weights, fairness, mercy rule         |
+| `src/game/solver.ts`            | Whole-hand solvability search                       |
+| `src/game/bitboard.ts`          | Packed boards for fast search                       |
+| `src/game/difficulty.ts`        | Difficulty curve                                    |
 | `src/game/board.ts`             | 8×8 grid, placement validation, line clearing       |
 | `src/game/scoring.ts`           | Scoring formulas                                    |
 | `src/game/state.ts`             | Game state machine, hand management                 |

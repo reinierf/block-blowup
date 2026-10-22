@@ -8,7 +8,7 @@ This file tracks progress against those phases and records decisions made along 
 - [x] **Phase 0 — Fork and tooling** (2026-10-22)
 - [x] **Phase 1 — Characterisation tests and simulation harness** (2026-10-22)
 - [x] **Phase 2 — Rules (config module, combo grace, board-clear bonus)** (2026-10-22)
-- [ ] Phase 3 — Generator (weighted, fair, mercy rule)
+- [x] **Phase 3 — Generator (weighted, fair, mercy rule)** (2026-10-22)
 - [ ] Phase 4 — PixiJS renderer, mobile layout, theme
 - [ ] Phase 5 — Input and preview
 - [ ] Phase 6 — Feedback, audio, haptics
@@ -75,6 +75,35 @@ This file tracks progress against those phases and records decisions made along 
 - Taste defaults to review: `COMBO_GRACE = 3`, `COMBO_MULT_CAP = 5`,
   `ALL_CLEAR_BONUS = 300`, line table `[0, 10, 40, 90, 160, 250, 360, 490]`, praise words
   Good / Great / Excellent / Amazing at 2 / 3 / 4 / 5+ lines.
+
+## Phase 3 notes
+
+- `PieceBag` is gone; `Generator` deals every hand (see `docs/game-design.md` §3). The app
+  now seeds `Mulberry32` from `crypto.getRandomValues`; the simulation keeps the HANDOVER
+  LCG.
+- Simulation, seeds 1..300:
+
+  | Metric                                    | After Phase 2    | After Phase 3             |
+  | ----------------------------------------- | ---------------- | ------------------------- |
+  | Average moves                             | 34.4             | 97.4                      |
+  | Score median / avg / best                 | 375 / 444 / 1935 | 1074 / 1217 / 3335        |
+  | Average best combo                        | 6.64             | 9.44                      |
+  | Died on a fresh hand                      | 13 / 300         | **0 / 300**               |
+  | Difficulty at move 10 / 40 / 100 / 200    | —                | 0.02 / 0.15 / 0.38 / 0.62 |
+  | Redraws per deal / mercy rate / fallbacks | —                | 0.057 / 4.1% / 0%         |
+
+- Performance: first version of the solver used row arrays and cost ~4 µs per node (max
+  6.6 ms per deal on a desktop). Packed 8×8 bitboards with precomputed placements brought
+  that to p99 0.02 ms, max < 0.1 ms. `DEAL_NODE_BUDGET` bounds the theoretical worst case.
+  `tests/sim/deal-budget.test.ts` is the CI time budget (p99 < 1 ms, max < 4 ms in Node).
+- Vitest 5 replaced `vitest bench` with an experimental test-context `bench` API that
+  printed nothing useful here, so the budget is a plain timing test and `npm run sim`
+  prints deal latency instead.
+- Taste defaults to review: difficulty curve (0 → 0, 500 → 0.2, 1500 → 0.45, 3000 → 0.7,
+  6000 → 1), family weights, `P_SOLVABLE_HARD` 0.7, `MAX_REDRAWS` 20, mercy at 60% fill
+  or 2 dry hands with ×4 boost.
+- Possible follow-up: games now last ~3× longer under the bot; whether that's too easy for
+  a human is a feel question for playtesting once the new renderer is in.
 
 ## Known issues (inherited from the fork)
 

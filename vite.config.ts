@@ -21,7 +21,11 @@ export default defineConfig(({ command }) => ({
       },
       {
         extends: true,
-        test: { name: 'sim', include: ['tests/sim/**/*.test.ts'], environment: 'node' },
+        test: {
+          name: 'sim',
+          include: ['tests/sim/**/*.test.ts'],
+          environment: 'node',
+        },
       },
     ],
     coverage: {

@@ -2,6 +2,7 @@
 // Plays seeded games with the greedy bot and aggregates statistics.
 // Pure: runs in Node (scripts/simulate.ts, tests/sim) without a browser.
 
+import type { DealInfo } from '../game/generator';
 import { Game, GameStatus } from '../game/state';
 import { chooseMove } from './bot';
 import { lcg } from './lcg';
@@ -28,6 +29,17 @@ export interface GameStats {
   diedOnFreshHand: boolean;
   /** Board fill fraction (0–1) after every move. */
   fill: number[];
+  /** Difficulty of the hand in play at every move. */
+  difficulty: number[];
+  /** Hands dealt, including the first. */
+  deals: number;
+  /** Hands rejected by the generator before one was accepted, summed over all deals. */
+  redraws: number;
+  /** Deals where the mercy rule boosted line-completing pieces. */
+  mercyDeals: number;
+  /** Deals that fell back: accepted an unsolvable hand / swapped in the smallest piece. */
+  acceptedUnsolvable: number;
+  swappedSmallest: number;
   log: GameLogEntry[];
 }
 
@@ -43,6 +55,16 @@ export interface BatchStats {
   deadFreshHands: number;
   /** Average board fill after move N (N = 10, 20, 30, …) among games still running. */
   fillByMove: Record<number, number>;
+  /** Average difficulty at move N, same sampling as fillByMove. */
+  difficultyByMove: Record<number, number>;
+  /** Average difficulty when the game ended. */
+  avgFinalDifficulty: number;
+  /** Rejected hands per deal. */
+  redrawsPerDeal: number;
+  /** Fraction of deals where the mercy rule fired. */
+  mercyRate: number;
+  /** Fraction of deals that needed a fallback. */
+  fallbackRate: number;
 }
 
 /** Safety cap so a balance bug can't hang the harness. */
@@ -55,11 +77,14 @@ export function playGame(seed: number): GameStats {
   let diedOnFreshHand = false;
   let allClears = 0;
   const cells = game.size * game.size;
+  const difficulty: number[] = [];
+  const deals: DealInfo[] = [game.lastDeal!];
 
   while (game.status === GameStatus.PLAYING && log.length < MAX_MOVES) {
     const move = chooseMove(game);
     if (!move) break; // can't happen while PLAYING, but keep the loop safe
     const hand = game.hand.map((p) => p?.shape.name ?? '-');
+    difficulty.push(game.lastDeal!.difficulty);
     const handWasLast = game.hand.filter((p) => p !== null).length === 1;
     const result = game.placeAt(move.handIndex, move.ox, move.oy)!;
     log.push({
@@ -75,6 +100,7 @@ export function playGame(seed: number): GameStats {
     const filled = game.board.grid.reduce((n, row) => n + row.filter((c) => c !== null).length, 0);
     fill.push(filled / cells);
     if (result.allClear) allClears++;
+    if (result.deal) deals.push(result.deal);
     if (result.gameOver && handWasLast) diedOnFreshHand = true;
   }
 
@@ -86,6 +112,12 @@ export function playGame(seed: number): GameStats {
     allClears,
     diedOnFreshHand,
     fill,
+    difficulty,
+    deals: deals.length,
+    redraws: deals.reduce((n, d) => n + d.redraws, 0),
+    mercyDeals: deals.filter((d) => d.mercy).length,
+    acceptedUnsolvable: deals.filter((d) => d.fallback === 'acceptedUnsolvable').length,
+    swappedSmallest: deals.filter((d) => d.fallback === 'swappedSmallest').length,
     log,
   };
 }
@@ -99,13 +131,7 @@ function median(values: number[]): number {
 export function summarize(games: readonly GameStats[]): BatchStats {
   const n = games.length;
   const sum = (f: (g: GameStats) => number) => games.reduce((a, g) => a + f(g), 0);
-  const fillByMove: Record<number, number> = {};
-  const longest = Math.max(...games.map((g) => g.moves));
-  for (let m = 10; m <= longest; m += 10) {
-    const alive = games.filter((g) => g.fill.length >= m);
-    if (alive.length < 5) break;
-    fillByMove[m] = alive.reduce((a, g) => a + g.fill[m - 1]!, 0) / alive.length;
-  }
+  const deals = sum((g) => g.deals);
   return {
     games: n,
     avgMoves: sum((g) => g.moves) / n,
@@ -115,8 +141,24 @@ export function summarize(games: readonly GameStats[]): BatchStats {
     avgBestCombo: sum((g) => g.bestCombo) / n,
     avgAllClears: sum((g) => g.allClears) / n,
     deadFreshHands: games.filter((g) => g.diedOnFreshHand).length,
-    fillByMove,
+    fillByMove: byMove(games, (g) => g.fill),
+    difficultyByMove: byMove(games, (g) => g.difficulty),
+    avgFinalDifficulty: sum((g) => g.difficulty[g.difficulty.length - 1] ?? 0) / n,
+    redrawsPerDeal: sum((g) => g.redraws) / deals,
+    mercyRate: sum((g) => g.mercyDeals) / deals,
+    fallbackRate: sum((g) => g.acceptedUnsolvable + g.swappedSmallest) / deals,
   };
+}
+
+/** Average of a per-move series at moves 10, 20, 30, … over games still running (≥ 5). */
+function byMove(games: readonly GameStats[], series: (g: GameStats) => number[]) {
+  const out: Record<number, number> = {};
+  for (let m = 10; ; m += 10) {
+    const alive = games.filter((g) => g.moves >= m);
+    if (alive.length < 5) break;
+    out[m] = alive.reduce((a, g) => a + series(g)[m - 1]!, 0) / alive.length;
+  }
+  return out;
 }
 
 /** Play seeds `from..to` (inclusive). */

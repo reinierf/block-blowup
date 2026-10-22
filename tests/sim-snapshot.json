@@ -3,14 +3,18 @@
     "from": 1,
     "to": 50
   },
-  "avgMoves": 32.18,
-  "medianScore": 360.5,
-  "avgScore": 416.28,
-  "bestScore": 1038,
-  "avgBestCombo": 6.74,
-  "avgAllClears": 0.02,
-  "deadFreshHands": 2,
-  "fillAt10": 0.2741,
-  "fillAt20": 0.3835,
-  "fillAt30": 0.4844
+  "avgMoves": 90.54,
+  "medianScore": 1029.5,
+  "avgScore": 1119.58,
+  "bestScore": 3238,
+  "avgBestCombo": 9.04,
+  "avgAllClears": 0.04,
+  "deadFreshHands": 0,
+  "fillAt10": 0.2166,
+  "fillAt20": 0.3072,
+  "fillAt30": 0.3401,
+  "avgFinalDifficulty": 0.3341,
+  "redrawsPerDeal": 0.0504,
+  "mercyRate": 0.0399,
+  "fallbackRate": 0
 }

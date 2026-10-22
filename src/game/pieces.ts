@@ -1,15 +1,31 @@
 // src/game/pieces.ts
-// Piece shape definitions + the bag-based hand generator.
+// Piece shape definitions and the palette. Hands are dealt by generator.ts.
 // Pure module: no DOM, no rendering.
 
-/** A random source returning a float in [0, 1). */
-export type Rng = () => number;
+export type { Rng } from './rng';
+
+/** Shape families: generator weights are set per family (see config.ts). */
+export type ShapeFamily =
+  | 'single'
+  | 'line2'
+  | 'line3'
+  | 'line4'
+  | 'line5'
+  | 'square2'
+  | 'square3'
+  | 'rect'
+  | 'corner'
+  | 'L'
+  | 'T'
+  | 'SZ'
+  | 'bigL';
 
 export type CellOffset = readonly [x: number, y: number];
 
 export interface Shape {
   readonly id: number;
   readonly name: string;
+  readonly family: ShapeFamily;
   readonly width: number;
   readonly height: number;
   readonly cells: readonly CellOffset[];
@@ -17,6 +33,7 @@ export interface Shape {
 
 interface ShapeDef {
   name: string;
+  family: ShapeFamily;
   pattern: string[];
 }
 
@@ -26,55 +43,55 @@ interface ShapeDef {
  */
 const SHAPE_DEFS: ShapeDef[] = [
   // --- single ---------------------------------------------------------------
-  { name: 'single', pattern: ['X'] },
+  { name: 'single', family: 'single', pattern: ['X'] },
 
   // --- straight lines -------------------------------------------------------
-  { name: 'line2-h', pattern: ['XX'] },
-  { name: 'line3-h', pattern: ['XXX'] },
-  { name: 'line4-h', pattern: ['XXXX'] },
-  { name: 'line5-h', pattern: ['XXXXX'] },
-  { name: 'line2-v', pattern: ['X', 'X'] },
-  { name: 'line3-v', pattern: ['X', 'X', 'X'] },
-  { name: 'line4-v', pattern: ['X', 'X', 'X', 'X'] },
-  { name: 'line5-v', pattern: ['X', 'X', 'X', 'X', 'X'] },
+  { name: 'line2-h', family: 'line2', pattern: ['XX'] },
+  { name: 'line3-h', family: 'line3', pattern: ['XXX'] },
+  { name: 'line4-h', family: 'line4', pattern: ['XXXX'] },
+  { name: 'line5-h', family: 'line5', pattern: ['XXXXX'] },
+  { name: 'line2-v', family: 'line2', pattern: ['X', 'X'] },
+  { name: 'line3-v', family: 'line3', pattern: ['X', 'X', 'X'] },
+  { name: 'line4-v', family: 'line4', pattern: ['X', 'X', 'X', 'X'] },
+  { name: 'line5-v', family: 'line5', pattern: ['X', 'X', 'X', 'X', 'X'] },
 
   // --- squares --------------------------------------------------------------
-  { name: 'square2', pattern: ['XX', 'XX'] },
-  { name: 'square3', pattern: ['XXX', 'XXX', 'XXX'] },
+  { name: 'square2', family: 'square2', pattern: ['XX', 'XX'] },
+  { name: 'square3', family: 'square3', pattern: ['XXX', 'XXX', 'XXX'] },
 
   // --- rectangles -----------------------------------------------------------
-  { name: 'rect-2x3', pattern: ['XX', 'XX', 'XX'] },
-  { name: 'rect-3x2', pattern: ['XXX', 'XXX'] },
+  { name: 'rect-2x3', family: 'rect', pattern: ['XX', 'XX', 'XX'] },
+  { name: 'rect-3x2', family: 'rect', pattern: ['XXX', 'XXX'] },
 
   // --- small corners (3-cell L) --------------------------------------------
-  { name: 'corner-tl', pattern: ['XX', 'X.'] },
-  { name: 'corner-tr', pattern: ['XX', '.X'] },
-  { name: 'corner-bl', pattern: ['X.', 'XX'] },
-  { name: 'corner-br', pattern: ['.X', 'XX'] },
+  { name: 'corner-tl', family: 'corner', pattern: ['XX', 'X.'] },
+  { name: 'corner-tr', family: 'corner', pattern: ['XX', '.X'] },
+  { name: 'corner-bl', family: 'corner', pattern: ['X.', 'XX'] },
+  { name: 'corner-br', family: 'corner', pattern: ['.X', 'XX'] },
 
   // --- L / J (4-cell) -------------------------------------------------------
-  { name: 'L-1', pattern: ['X.', 'X.', 'XX'] },
-  { name: 'L-2', pattern: ['.X', '.X', 'XX'] },
-  { name: 'L-3', pattern: ['XX', 'X.', 'X.'] },
-  { name: 'L-4', pattern: ['XX', '.X', '.X'] },
+  { name: 'L-1', family: 'L', pattern: ['X.', 'X.', 'XX'] },
+  { name: 'L-2', family: 'L', pattern: ['.X', '.X', 'XX'] },
+  { name: 'L-3', family: 'L', pattern: ['XX', 'X.', 'X.'] },
+  { name: 'L-4', family: 'L', pattern: ['XX', '.X', '.X'] },
 
   // --- T (4-cell) -----------------------------------------------------------
-  { name: 'T-up', pattern: ['XXX', '.X.'] },
-  { name: 'T-down', pattern: ['.X.', 'XXX'] },
-  { name: 'T-left', pattern: ['X.', 'XX', 'X.'] },
-  { name: 'T-right', pattern: ['.X', 'XX', '.X'] },
+  { name: 'T-up', family: 'T', pattern: ['XXX', '.X.'] },
+  { name: 'T-down', family: 'T', pattern: ['.X.', 'XXX'] },
+  { name: 'T-left', family: 'T', pattern: ['X.', 'XX', 'X.'] },
+  { name: 'T-right', family: 'T', pattern: ['.X', 'XX', '.X'] },
 
   // --- S / Z (4-cell) -------------------------------------------------------
-  { name: 'S-h', pattern: ['.XX', 'XX.'] },
-  { name: 'Z-h', pattern: ['XX.', '.XX'] },
-  { name: 'S-v', pattern: ['X.', 'XX', '.X'] },
-  { name: 'Z-v', pattern: ['.X', 'XX', 'X.'] },
+  { name: 'S-h', family: 'SZ', pattern: ['.XX', 'XX.'] },
+  { name: 'Z-h', family: 'SZ', pattern: ['XX.', '.XX'] },
+  { name: 'S-v', family: 'SZ', pattern: ['X.', 'XX', '.X'] },
+  { name: 'Z-v', family: 'SZ', pattern: ['.X', 'XX', 'X.'] },
 
   // --- big L (5-cell) -------------------------------------------------------
-  { name: 'bigL-1', pattern: ['X..', 'X..', 'XXX'] },
-  { name: 'bigL-2', pattern: ['..X', '..X', 'XXX'] },
-  { name: 'bigL-3', pattern: ['XXX', 'X..', 'X..'] },
-  { name: 'bigL-4', pattern: ['XXX', '..X', '..X'] },
+  { name: 'bigL-1', family: 'bigL', pattern: ['X..', 'X..', 'XXX'] },
+  { name: 'bigL-2', family: 'bigL', pattern: ['..X', '..X', 'XXX'] },
+  { name: 'bigL-3', family: 'bigL', pattern: ['XXX', 'X..', 'X..'] },
+  { name: 'bigL-4', family: 'bigL', pattern: ['XXX', '..X', '..X'] },
 ];
 
 /** Vibrant block palette; shapes map to a stable color by id. */
@@ -113,36 +130,13 @@ export const SHAPES: readonly Shape[] = Object.freeze(
         if (def.pattern[y]![x] === 'X') cells.push(Object.freeze([x, y] as const));
       }
     }
-    return Object.freeze({ id, name: def.name, width, height, cells: Object.freeze(cells) });
+    return Object.freeze({
+      id,
+      name: def.name,
+      family: def.family,
+      width,
+      height,
+      cells: Object.freeze(cells),
+    });
   }),
 );
-
-/**
- * Deals shapes from a shuffled bag (no repeats until the bag is emptied, then reshuffle).
- * Produces a fairer distribution than independent random draws.
- */
-export class PieceBag {
-  readonly shapes: readonly Shape[];
-  readonly rng: Rng;
-  bag: number[] = [];
-
-  constructor(shapes: readonly Shape[], rng: Rng) {
-    this.shapes = shapes;
-    this.rng = rng;
-  }
-
-  private refill(): void {
-    this.bag = this.shapes.map((_, i) => i);
-    // Fisher–Yates shuffle.
-    for (let i = this.bag.length - 1; i > 0; i--) {
-      const j = Math.floor(this.rng() * (i + 1));
-      [this.bag[i], this.bag[j]] = [this.bag[j]!, this.bag[i]!];
-    }
-  }
-
-  /** The next shape in the bag. */
-  next(): Shape {
-    if (this.bag.length === 0) this.refill();
-    return this.shapes[this.bag.pop()!]!;
-  }
-}

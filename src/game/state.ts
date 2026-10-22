@@ -3,7 +3,10 @@
 // Pure module: no DOM, no rendering, no Math.random (the caller supplies the RNG).
 
 import { Board } from './board';
-import { SHAPES, PieceBag, colorFor, type Rng, type Shape } from './pieces';
+import { rowsFromBoard } from './bitboard';
+import { Generator, type DealInfo } from './generator';
+import { colorFor, type Shape } from './pieces';
+import type { Rng } from './rng';
 import { COMBO_GRACE } from './config';
 import { allClearPoints, lineClearPoints, placementPoints, praiseFor } from './scoring';
 
@@ -41,6 +44,8 @@ export interface TurnResult {
   praise: string | null;
   /** Total points for this move: placement + line clear + all-clear bonus. */
   points: number;
+  /** The generator's decisions when this move emptied the hand and a new one was dealt. */
+  deal: DealInfo | null;
   gameOver: boolean;
 }
 
@@ -55,7 +60,7 @@ export class Game {
   readonly size: number;
   readonly rng: Rng;
   readonly board: Board;
-  readonly bag: PieceBag;
+  readonly generator: Generator;
   /** Three slots; null once a slot's piece has been placed. */
   hand: (HandPiece | null)[] = [null, null, null];
   score = 0;
@@ -63,13 +68,19 @@ export class Game {
   /** Placements in a row without a clear; the combo resets when this reaches COMBO_GRACE. */
   movesSinceClear = 0;
   bestCombo = 0;
+  /** Completed hands in a row without any clear (feeds the mercy rule). */
+  handsWithoutClear = 0;
+  /** Something was cleared since the current hand was dealt. */
+  handHadClear = false;
+  /** The generator's decisions for the current hand. */
+  lastDeal: DealInfo | null = null;
   status: GameStatus = GameStatus.PLAYING;
 
   constructor({ size = 8, rng }: GameOptions) {
     this.size = size;
     this.rng = rng;
     this.board = new Board(size);
-    this.bag = new PieceBag(SHAPES, rng);
+    this.generator = new Generator(rng);
     this.reset();
   }
 
@@ -80,18 +91,23 @@ export class Game {
     this.combo = 0;
     this.movesSinceClear = 0;
     this.bestCombo = 0;
+    this.handsWithoutClear = 0;
+    this.handHadClear = false;
     this.status = GameStatus.PLAYING;
     this.dealHand();
     // An empty board always has a legal move, but keep the check for safety.
     if (!this.hasAnyMove()) this.status = GameStatus.GAME_OVER;
   }
 
-  /** Fill all three hand slots from the bag. */
-  dealHand(): void {
-    this.hand = [0, 0, 0].map(() => {
-      const shape = this.bag.next();
-      return { uid: ++uidCounter, shape, color: colorFor(shape) };
+  /** Deal a fresh hand of three from the generator. */
+  dealHand(): DealInfo {
+    const { shapes, info } = this.generator.deal(rowsFromBoard(this.board), {
+      score: this.score,
+      handsWithoutClear: this.handsWithoutClear,
     });
+    this.hand = shapes.map((shape) => ({ uid: ++uidCounter, shape, color: colorFor(shape) }));
+    this.lastDeal = info;
+    return info;
   }
 
   /** Is placing hand slot `handIndex` at (ox, oy) legal? */
@@ -121,6 +137,7 @@ export class Game {
     const lines = rows.length + cols.length;
 
     if (lines > 0) {
+      this.handHadClear = true;
       this.combo += 1;
       this.movesSinceClear = 0;
       if (this.combo > this.bestCombo) this.bestCombo = this.combo;
@@ -139,7 +156,12 @@ export class Game {
     this.score += points;
 
     // Refill the hand once all three slots are used.
-    if (this.hand.every((s) => s === null)) this.dealHand();
+    let deal: DealInfo | null = null;
+    if (this.hand.every((s) => s === null)) {
+      this.handsWithoutClear = this.handHadClear ? 0 : this.handsWithoutClear + 1;
+      this.handHadClear = false;
+      deal = this.dealHand();
+    }
 
     if (!this.hasAnyMove()) this.status = GameStatus.GAME_OVER;
 
@@ -154,6 +176,7 @@ export class Game {
       allClear,
       praise: praiseFor(lines),
       points,
+      deal,
       gameOver: this.status === GameStatus.GAME_OVER,
     };
   }
