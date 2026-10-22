@@ -23,6 +23,8 @@ export interface Theme {
   /** Ghost preview outline when a drop would be legal / illegal. */
   ghostValid: string;
   ghostInvalid: string;
+  /** Blocks greyed out by the game-over sequence. */
+  gameOverBlock: string;
   blocks: Record<PieceColor, string>;
   /** Bevel strength: how far the top-left edge lightens and the bottom-right darkens (0–1). */
   bevelLight: number;
@@ -44,6 +46,7 @@ export const SUBDUED: Theme = {
   buttonText: '#10182A',
   ghostValid: '#E6EAF2',
   ghostInvalid: '#D46A63',
+  gameOverBlock: '#4A546B',
   blocks: {
     red: '#D46A63',
     orange: '#DB8F5A',

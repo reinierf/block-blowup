@@ -1,12 +1,17 @@
 // src/main.ts
-// Bootstrap: theme, game, renderer, input, HUD, overlays, and the frame loop.
+// Bootstrap: theme, settings, game, renderer, input, feedback (audio, haptics), HUD,
+// overlays, and the frame loop.
 
+import { AudioManager } from './audio';
+import { feedbackFor, type FeedbackPlan } from './feedback/plan';
 import { Mulberry32 } from './game/rng';
 import { Game, GameStatus, type TurnResult } from './game/state';
+import { createHaptics } from './haptics';
 import { createInput } from './input';
 import { computeLayout, type Insets, type Layout } from './render/layout';
 import { createPixiRenderer } from './render/pixi-renderer';
 import { cssVariables, theme } from './render/theme';
+import { loadSettings, reduceMotion, saveSettings } from './settings';
 import { loadHighScore, saveHighScore } from './storage';
 import { installTestHook } from './test-hook';
 
@@ -23,9 +28,11 @@ const scoreEl = el('score');
 const bestEl = el('best');
 const comboWrap = el('combo-wrap');
 const comboEl = el('combo');
+const muteBtn = el<HTMLButtonElement>('mute');
 const overlay = el('overlay');
 const overlayTitle = el('overlay-title');
 const overlayMsg = el('overlay-msg');
+const newBestEl = el('new-best');
 const restartBtn = el<HTMLButtonElement>('restart');
 const safeProbe = el('safe-probe');
 
@@ -47,9 +54,36 @@ const seed =
     ? Number(seedParam) >>> 0
     : crypto.getRandomValues(new Uint32Array(1))[0]!;
 
+// --- Settings, audio, haptics ----------------------------------------------------
+const settings = loadSettings();
+const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const audio = new AudioManager({ muted: settings.muted });
+const haptics = createHaptics(navigator, settings.haptics);
+
+// iOS only lets audio start from a user gesture: unlock on the first pointer event.
+window.addEventListener('pointerdown', () => audio.unlock(), { capture: true, passive: true });
+
+function renderMuteButton(): void {
+  muteBtn.setAttribute('aria-pressed', String(settings.muted));
+  muteBtn.setAttribute('aria-label', settings.muted ? 'Sound off' : 'Sound on');
+  muteBtn.classList.toggle('muted', settings.muted);
+}
+
+muteBtn.addEventListener('click', () => {
+  settings.muted = !settings.muted;
+  audio.muted = settings.muted;
+  saveSettings(settings);
+  renderMuteButton();
+});
+
 // --- State -------------------------------------------------------------------
 let layout: Layout | null = null;
 let highScore = loadHighScore();
+/** The best score when this game started, for "New best!". */
+let bestAtStart = highScore;
+/** Score shown in the HUD; counts up towards game.score. */
+let shownScore = 0;
+let lastFeedback: FeedbackPlan | null = null;
 const game = new Game({ rng: new Mulberry32(seed).next });
 
 const renderer = await createPixiRenderer(stage, {
@@ -92,33 +126,51 @@ function resize(): void {
 
 // --- Gameplay callbacks ------------------------------------------------------
 function handlePlace(result: TurnResult): void {
-  renderer.playEffects(result);
+  const plan = feedbackFor(result, { reduceMotion: reduceMotion(settings, motionQuery.matches) });
+  lastFeedback = plan;
+  renderer.playEffects(result, plan);
+  for (const cue of plan.sounds) audio.play(cue);
+  if (plan.haptic !== null) haptics.vibrate(plan.haptic);
+
   if (game.score > highScore) {
     highScore = game.score;
     saveHighScore(highScore);
   }
   updateHud();
-  if (game.status === GameStatus.GAME_OVER) {
-    window.setTimeout(showGameOver, testMode ? 0 : 450);
-  }
+  if (game.status === GameStatus.GAME_OVER) renderer.playGameOver(game, showGameOver);
 }
 
 function updateHud(): void {
-  scoreEl.textContent = String(game.score);
   bestEl.textContent = String(Math.max(highScore, game.score));
   comboWrap.hidden = game.combo < 2;
   comboEl.textContent = `Combo ×${game.combo}`;
 }
 
+/** Count the HUD score up towards the real score (about 0.4 s for any jump). */
+function tickScore(dt: number): void {
+  if (shownScore === game.score) return;
+  if (freezeAnimations || shownScore > game.score) {
+    shownScore = game.score;
+  } else {
+    const step = Math.max(1, Math.ceil((game.score - shownScore) * Math.min(1, dt * 8)));
+    shownScore = Math.min(game.score, shownScore + step);
+  }
+  scoreEl.textContent = String(shownScore);
+}
+
 function showGameOver(): void {
   overlayTitle.textContent = 'Game Over';
   overlayMsg.textContent = `Score ${game.score}  ·  Best ${Math.max(highScore, game.score)}`;
+  newBestEl.hidden = !(game.score > bestAtStart && game.score > 0);
   overlay.hidden = false;
 }
 
 restartBtn.addEventListener('click', () => {
   game.reset();
   renderer.clearEffects();
+  bestAtStart = highScore;
+  shownScore = 0;
+  scoreEl.textContent = '0';
   updateHud();
   overlay.hidden = true;
 });
@@ -126,13 +178,13 @@ restartBtn.addEventListener('click', () => {
 // --- Frame loop (paused while the tab is hidden) -----------------------------
 let lastTime = performance.now();
 let rafId = 0;
-
 /** Test mode: main-thread milliseconds spent on each drawn frame (read by the perf job). */
 const frameCosts: number[] = [];
 
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
+  tickScore(dt);
   const t0 = performance.now();
   const drew = renderer.frame(game, input.drag, dt);
   if (testMode && drew) frameCosts.push(performance.now() - t0);
@@ -152,7 +204,16 @@ document.addEventListener('visibilitychange', () => {
 // --- Init --------------------------------------------------------------------
 resize();
 updateHud();
+renderMuteButton();
 new ResizeObserver(resize).observe(stage);
 start();
 
-if (testMode) installTestHook({ game, seed, getLayout: () => layout, frameCosts });
+if (testMode) {
+  installTestHook({
+    game,
+    seed,
+    getLayout: () => layout,
+    frameCosts,
+    getFeedback: () => lastFeedback,
+  });
+}

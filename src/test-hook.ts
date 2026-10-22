@@ -3,6 +3,7 @@
 // main.ts only calls this behind `import.meta.env.DEV || MODE === 'test'`, so production
 // builds drop it (scripts/check-prod-build.ts verifies that).
 
+import type { FeedbackPlan } from './feedback/plan';
 import type { DealInfo } from './game/generator';
 import type { Game } from './game/state';
 import type { Layout } from './render/layout';
@@ -27,6 +28,8 @@ export interface BlowupTestHook {
   readonly layout: () => Layout | null;
   /** Main-thread ms per drawn frame since the last call (the buffer is emptied). */
   readonly takeFrameCosts: () => number[];
+  /** The feedback plan of the last placement (sounds, shake, popup…), or null. */
+  readonly lastFeedback: () => FeedbackPlan | null;
 }
 
 declare global {
@@ -40,8 +43,9 @@ export function installTestHook(deps: {
   seed: number;
   getLayout: () => Layout | null;
   frameCosts: number[];
+  getFeedback: () => FeedbackPlan | null;
 }): void {
-  const { game, seed, getLayout, frameCosts } = deps;
+  const { game, seed, getLayout, frameCosts, getFeedback } = deps;
   const hook: BlowupTestHook = {
     snapshot: () =>
       structuredClone({
@@ -66,6 +70,7 @@ export function installTestHook(deps: {
       }),
     layout: () => structuredClone(getLayout()),
     takeFrameCosts: () => frameCosts.splice(0),
+    lastFeedback: () => structuredClone(getFeedback()),
   };
   Object.defineProperty(window, '__blowup', { value: Object.freeze(hook), writable: false });
 }

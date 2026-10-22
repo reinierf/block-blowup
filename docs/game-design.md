@@ -214,15 +214,49 @@ that matters — if two of your three pieces still fit, you keep playing.
   from `env(safe-area-inset-*)` (`viewport-fit=cover`). Zooming is not disabled; gestures
   on the game area are (`touch-action: none`, no overscroll, no selection, no long-press
   menu).
-- **Effects** (unchanged from the fork for now): cleared cells flash and shrink, particles
-  burst in the cells' colours, and `+points` floats up from the board centre.
-- **HUD:** score, a combo badge (shown from combo 2), and best score. **Game-over
-  overlay:** final score, best score and "Play again".
+- **HUD:** score (counts up to the new value in about 0.4 s), a combo badge (from combo
+  2), best score, and a mute button. Fixed grid columns, so nothing shifts when the badge
+  appears.
+
+## 8a. Feedback
+
+Every effect is driven by the turn result. `feedbackFor(result, { reduceMotion })` in
+`src/feedback/plan.ts` (pure, unit-tested) turns it into a plan; the renderer, the audio
+manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts) and
+`AUDIO` (audio.ts).
+
+- **Clear:** cleared cells flash and shrink, particles burst in the cells' colours
+  (3 per cell, 1 with reduced motion). A popup rises from the **centre of the cleared
+  cells** (kept inside the board): the praise word ("Good" / "Great" / "Excellent" /
+  "Amazing" for 2 / 3 / 4 / 5+ lines, from the turn result), `+points`, and "Combo ×N" from
+  combo 2.
+- **Screen shake** for clears of 2+ lines: amplitude 3 px + 3 px per extra line, capped
+  at 12 px, decaying over 0.35 s. Off with reduced motion.
+- **Board clear:** "Board clear!" as the praise word, a gentle accent glow over the board
+  (peaks at 28% opacity; no full-screen flash), and a multicoloured burst from the board
+  centre.
+- **Game over:** filled blocks turn grey one by one (row by row, about 1 s in total), then
+  the score screen, which shows **"New best!"** when the score beats the best score from
+  when the game started.
+- **Audio** (`src/audio.ts`, synthesised with Web Audio, no files): a soft click on every
+  placement; a clear chord with one more note per extra line (up to 4) whose root rises
+  2 semitones per combo step (from C5, capped one octave up); a rising arpeggio sting for
+  a board clear; a falling phrase on game over. The AudioContext is created and resumed
+  on the first pointer event (iOS requirement). Mute is saved in settings.
+- **Haptics** (`src/haptics.ts`): 12 ms on placement, a short pattern on clears, longer
+  ones for board clear and game over. Feature-detected: where `navigator.vibrate` is
+  missing (iOS Safari) it silently does nothing. On/off is a setting.
+- **Reduced motion:** the `reducedMotion` setting is `system` (follows
+  `prefers-reduced-motion`), `on` or `off`. When active: no shake, fewer particles.
+- **Settings** (`src/settings.ts`, key `block-blowup.settings`): `muted`, `haptics`,
+  `reducedMotion`. Loading never throws; corrupt or old data falls back to defaults field
+  by field. Only mute has a button so far; the settings screen comes in Phase 7.
 
 ## 9. Persistence
 
-- Only the **high score** is saved, in `localStorage` under the key `block-blowup.highscore`
-  (`src/storage.ts`). No accounts, no network, no telemetry.
+- The **high score** (`block-blowup.highscore`, `src/storage.ts`) and the **settings**
+  (`block-blowup.settings`, `src/settings.ts`) are saved in `localStorage`. No accounts,
+  no network, no telemetry.
 
 ## 10. Code map
 

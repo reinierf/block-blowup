@@ -12,6 +12,7 @@ import {
   Text,
   Texture,
 } from 'pixi.js';
+import { FEEDBACK, type FeedbackPlan } from '../feedback/plan';
 import type { Game, TurnResult } from '../game/state';
 import type { DragState } from '../input';
 import { INPUT } from '../input-logic';
@@ -44,10 +45,16 @@ interface Popup {
   kind: 'popup';
   t: number;
   dur: number;
-  text: Text;
+  node: Container;
   y0: number;
 }
-type Effect = Flash | Burst | Popup;
+interface Glow {
+  kind: 'glow';
+  t: number;
+  dur: number;
+  g: Graphics;
+}
+type Effect = Flash | Burst | Popup | Glow;
 
 export async function createPixiRenderer(
   host: HTMLElement,
@@ -101,11 +108,20 @@ export async function createPixiRenderer(
     return tex;
   }
 
+  function blockColor(color: string): string {
+    if (color === GREY) return theme.gameOverBlock;
+    return theme.blocks[color as keyof typeof theme.blocks] ?? theme.textSecondary;
+  }
+
+  function blockHex(color: string): number {
+    return hexToNumber(blockColor(color));
+  }
+
   /** Bevelled block: lighter top-left edge, darker bottom-right, soft gloss. */
   function blockTexture(color: string): Texture {
     let tex = blockTextures.get(color);
     if (!tex && layout) {
-      const hex = theme.blocks[color as keyof typeof theme.blocks] ?? theme.textSecondary;
+      const hex = blockColor(color);
       const s = layout.board.cell * (1 - 2 * CELL_GAP);
       const r = s * 0.16;
       const b = Math.max(1, s * 0.09);
@@ -287,58 +303,140 @@ export async function createPixiRenderer(
 
   // --- Effects -------------------------------------------------------------------------
 
-  function playEffects(result: TurnResult): void {
-    if (opts.freezeAnimations || !layout || result.clearedCells.length === 0) return;
-    const b = layout.board;
-    const s = b.cell * (1 - 2 * CELL_GAP);
+  const FONT = 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+  /** Pseudo-colour for blocks greyed out by the game-over sequence. */
+  const GREY = '__grey';
+  let shake = { amp: 0, t: 0 };
+  let gameOverFade: {
+    t: number;
+    order: number[];
+    perCell: number;
+    onDone: (() => void) | null;
+  } | null = null;
 
-    const sprites = result.clearedCells.map((c) => {
-      const sp = new Sprite(flashTexture);
-      sp.anchor.set(0.5);
-      const p = cellPos(c.x, c.y);
-      sp.position.set(p.x + s / 2, p.y + s / 2);
-      flashLayer.addChild(sp);
-      return sp;
-    });
-    effects.push({ kind: 'flash', t: 0, dur: 0.28, sprites });
-
-    const parts: Burst['parts'] = [];
-    for (const c of result.clearedCells) {
-      const p = cellPos(c.x, c.y);
-      const tint = hexToNumber(
-        theme.blocks[c.color as keyof typeof theme.blocks] ?? theme.textSecondary,
-      );
-      for (let i = 0; i < 3; i++) {
-        const size = (b.cell * (0.12 + Math.random() * 0.14)) / 8;
-        const particle = new Particle({
-          texture: particleTexture,
-          x: p.x + s / 2,
-          y: p.y + s / 2,
-          scaleX: size,
-          scaleY: size,
-          anchorX: 0.5,
-          anchorY: 0.5,
-          tint,
-        });
-        particles.addParticle(particle);
-        parts.push({ p: particle, vx: (Math.random() - 0.5) * 260, vy: -Math.random() * 240 - 40 });
-      }
-    }
-    effects.push({ kind: 'burst', t: 0, dur: 0.9, parts });
-
-    const text = new Text({
-      text: `+${result.points}`,
+  function label(text: string, size: number, color: string): Text {
+    return new Text({
+      text,
       style: {
-        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+        fontFamily: FONT,
         fontWeight: '800',
-        fontSize: Math.round(b.cell * 0.85),
-        fill: hexToNumber(theme.accent),
+        fontSize: Math.round(size),
+        fill: hexToNumber(color),
       },
       anchor: 0.5,
     });
-    text.position.set(b.x + b.size / 2, b.y + b.size / 2);
-    popupLayer.addChild(text);
-    effects.push({ kind: 'popup', t: 0, dur: 0.9, text, y0: text.y });
+  }
+
+  function burst(x: number, y: number, tint: number, count: number, speed: number): Burst['parts'] {
+    const parts: Burst['parts'] = [];
+    const cell = layout!.board.cell;
+    for (let i = 0; i < count; i++) {
+      const size = (cell * (0.12 + Math.random() * 0.14)) / 8;
+      const p = new Particle({
+        texture: particleTexture,
+        x,
+        y,
+        scaleX: size,
+        scaleY: size,
+        anchorX: 0.5,
+        anchorY: 0.5,
+        tint,
+      });
+      particles.addParticle(p);
+      const a = Math.random() * Math.PI * 2;
+      parts.push({
+        p,
+        vx: Math.cos(a) * speed * (0.4 + Math.random() * 0.6),
+        vy: Math.sin(a) * speed * (0.4 + Math.random() * 0.6) - speed * 0.5,
+      });
+    }
+    return parts;
+  }
+
+  function playEffects(result: TurnResult, plan: FeedbackPlan): void {
+    if (opts.freezeAnimations || !layout) return;
+    const b = layout.board;
+    const s = b.cell * (1 - 2 * CELL_GAP);
+
+    if (result.clearedCells.length > 0) {
+      const sprites = result.clearedCells.map((c) => {
+        const sp = new Sprite(flashTexture);
+        sp.anchor.set(0.5);
+        const p = cellPos(c.x, c.y);
+        sp.position.set(p.x + s / 2, p.y + s / 2);
+        flashLayer.addChild(sp);
+        return sp;
+      });
+      effects.push({ kind: 'flash', t: 0, dur: 0.28, sprites });
+
+      const parts: Burst['parts'] = [];
+      for (const c of result.clearedCells) {
+        const p = cellPos(c.x, c.y);
+        parts.push(
+          ...burst(p.x + s / 2, p.y + s / 2, blockHex(c.color), plan.particlesPerCell, 260),
+        );
+      }
+      effects.push({ kind: 'burst', t: 0, dur: 0.9, parts });
+    }
+
+    if (plan.popup) {
+      // Popup at the centre of the cleared cells, kept inside the board horizontally.
+      const node = new Container();
+      const lines: Text[] = [];
+      if (plan.popup.praise) lines.push(label(plan.popup.praise, b.cell * 0.85, theme.accent));
+      lines.push(label(plan.popup.points, b.cell * 0.7, theme.text));
+      if (plan.popup.combo) lines.push(label(plan.popup.combo, b.cell * 0.5, theme.accent));
+      let y = 0;
+      for (const t of lines) {
+        t.y = y + t.height / 2;
+        y += t.height * 0.95;
+        node.addChild(t);
+      }
+      node.pivot.set(0, y / 2);
+      const half = Math.max(...lines.map((t) => t.width)) / 2;
+      const px = Math.min(Math.max(b.x + plan.popup.x * b.cell, b.x + half), b.x + b.size - half);
+      node.position.set(px, b.y + plan.popup.y * b.cell);
+      popupLayer.addChild(node);
+      effects.push({ kind: 'popup', t: 0, dur: 1.0, node, y0: node.y });
+    }
+
+    if (plan.shake > 0) shake = { amp: plan.shake, t: 0 };
+
+    if (plan.celebrate) {
+      const pad = b.cell * 0.18;
+      const g = new Graphics()
+        .roundRect(b.x - pad, b.y - pad, b.size + 2 * pad, b.size + 2 * pad, b.cell * 0.3)
+        .fill(hexToNumber(theme.accent));
+      g.alpha = 0;
+      flashLayer.addChild(g);
+      effects.push({ kind: 'glow', t: 0, dur: 0.9, g });
+      const parts: Burst['parts'] = [];
+      const colors = Object.values(theme.blocks).map(hexToNumber);
+      const n = plan.particlesPerCell * 20;
+      colors.forEach((tint) =>
+        parts.push(
+          ...burst(b.x + b.size / 2, b.y + b.size / 2, tint, Math.ceil(n / colors.length), 520),
+        ),
+      );
+      effects.push({ kind: 'burst', t: 0, dur: 1.2, parts });
+    }
+  }
+
+  /** Game over: filled blocks turn grey one by one, then `onDone` (the score screen). */
+  function playGameOver(game: Game, onDone: () => void): void {
+    const order: number[] = [];
+    game.board.grid.forEach((row, y) =>
+      row.forEach((c, x) => {
+        if (c !== null) order.push(y * 8 + x);
+      }),
+    );
+    if (opts.freezeAnimations || !layout || order.length === 0) {
+      gameOverFade = { t: Infinity, order, perCell: 0, onDone: null };
+      lastSignature = '';
+      onDone();
+      return;
+    }
+    gameOverFade = { t: 0, order, perCell: Math.min(0.035, 1.1 / order.length), onDone };
   }
 
   function updateEffects(dt: number): void {
@@ -357,24 +455,58 @@ export async function createPixiRenderer(
           part.p.y += part.vy * dt;
           part.p.alpha = 1 - p;
         }
+      } else if (e.kind === 'popup') {
+        e.node.y = e.y0 - layout!.board.cell * 0.9 * easeOut(p);
+        e.node.alpha = Math.min(1, (1 - p) * 2.2);
+        e.node.scale.set(p < 0.12 ? 0.7 + (p / 0.12) * 0.3 : 1);
       } else {
-        e.text.y = e.y0 - layout!.board.cell * 1.1 * p;
-        e.text.alpha = Math.min(1, (1 - p) * 1.8);
+        // Board-clear glow: quick rise, slow fade; gentle (no full-screen flash).
+        e.g.alpha = 0.28 * (p < 0.15 ? p / 0.15 : 1 - (p - 0.15) / 0.85);
       }
     }
     for (let i = effects.length - 1; i >= 0; i--) {
       if (effects[i]!.t >= effects[i]!.dur) disposeEffect(effects.splice(i, 1)[0]!);
     }
+
+    if (shake.amp > 0) {
+      shake.t += dt;
+      const k = 1 - shake.t / FEEDBACK.shakeSeconds;
+      if (k <= 0) {
+        shake.amp = 0;
+        app.stage.position.set(0, 0);
+      } else {
+        const a = shake.amp * k;
+        app.stage.position.set((Math.random() * 2 - 1) * a, (Math.random() * 2 - 1) * a);
+      }
+    }
+
+    if (gameOverFade && gameOverFade.onDone) {
+      gameOverFade.t += dt;
+      if (gameOverFade.t >= gameOverFade.order.length * gameOverFade.perCell + 0.4) {
+        const done = gameOverFade.onDone;
+        gameOverFade.onDone = null;
+        done();
+      }
+    }
+  }
+
+  function animating(): boolean {
+    return effects.length > 0 || shake.amp > 0 || lift < 1 || !!gameOverFade?.onDone;
   }
 
   function disposeEffect(e: Effect): void {
     if (e.kind === 'flash') e.sprites.forEach((sp) => sp.destroy());
     else if (e.kind === 'burst') e.parts.forEach((part) => particles.removeParticle(part.p));
-    else e.text.destroy();
+    else if (e.kind === 'popup') e.node.destroy({ children: true });
+    else e.g.destroy();
   }
 
   function clearEffects(): void {
     effects.splice(0).forEach(disposeEffect);
+    shake = { amp: 0, t: 0 };
+    app.stage.position.set(0, 0);
+    gameOverFade = null;
+    lastSignature = '';
   }
 
   // --- Frame ---------------------------------------------------------------------------
@@ -393,7 +525,7 @@ export async function createPixiRenderer(
   function frame(game: Game, drag: DragState | null, dt: number): boolean {
     if (!layout) return false;
     const sig = signature(game, drag);
-    if (sig === lastSignature && effects.length === 0 && lift >= 1) return false;
+    if (sig === lastSignature && !animating()) return false;
     lastSignature = sig;
     // Line-clear preview: existing cells in lines the drop would complete take on the
     // dragged piece's colour.
@@ -409,6 +541,11 @@ export async function createPixiRenderer(
         cellSprites[i]!.texture = color ? blockTexture(color) : emptyTexture;
       }
     }
+    if (gameOverFade) {
+      const f = gameOverFade;
+      const n = f.perCell > 0 ? Math.floor(f.t / f.perCell) : f.order.length;
+      for (const i of f.order.slice(0, n)) cellSprites[i]!.texture = blockTexture(GREY);
+    }
     drawGhost(drag);
     drawTray(game, drag);
     drawDrag(drag, dt);
@@ -417,5 +554,5 @@ export async function createPixiRenderer(
     return true;
   }
 
-  return { canvas, resize, frame, playEffects, clearEffects };
+  return { canvas, resize, frame, playEffects, playGameOver, clearEffects };
 }

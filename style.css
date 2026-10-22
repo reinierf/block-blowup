@@ -56,12 +56,30 @@ body {
 /* --- HUD (positioned by main.ts from the layout) ------------------------------ */
 #hud {
   position: fixed;
-  display: flex;
+  /* Fixed columns, so nothing shifts when the combo badge appears or disappears. */
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 0 16px;
+  gap: 8px;
+  padding: 0 8px 0 16px;
   pointer-events: none;
+}
+
+#hud > :nth-child(1) {
+  grid-column: 1;
+}
+
+#combo-wrap {
+  grid-column: 2;
+  justify-self: center;
+}
+
+#hud > :nth-child(3) {
+  grid-column: 3;
+}
+
+#mute {
+  grid-column: 4;
 }
 
 .hud-item {
@@ -84,6 +102,45 @@ body {
   font-size: 24px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+}
+
+.icon-button {
+  pointer-events: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.icon-button svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.icon-button .wave {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.icon-button .icon-off,
+.icon-button.muted .icon-on {
+  display: none;
+}
+
+.icon-button.muted .icon-off {
+  display: block;
+}
+
+.new-best {
+  margin: 0 0 12px !important;
+  color: var(--accent) !important;
+  font-weight: 800;
+  font-size: 20px;
 }
 
 #combo-wrap {

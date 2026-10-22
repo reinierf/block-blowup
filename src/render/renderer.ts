@@ -2,6 +2,7 @@
 // The renderer interface. main.ts and input talk to this, never to Pixi directly, and
 // src/game/ knows nothing about rendering. Effects are driven only by the turn result.
 
+import type { FeedbackPlan } from '../feedback/plan';
 import type { Game, TurnResult } from '../game/state';
 import type { DragState } from '../input';
 import type { Layout } from './layout';
@@ -16,8 +17,10 @@ export interface Renderer {
    * nothing changed since the last frame; returns whether it drew.
    */
   frame(game: Game, drag: DragState | null, dt: number): boolean;
-  /** Start the effects for a resolved turn (flash, particles, popup…). */
-  playEffects(result: TurnResult): void;
+  /** Start the effects for a resolved turn, as decided by its feedback plan. */
+  playEffects(result: TurnResult, plan: FeedbackPlan): void;
+  /** Game-over sequence (blocks fade to grey one by one); calls `onDone` when finished. */
+  playGameOver(game: Game, onDone: () => void): void;
   /** Drop all running effects (e.g. on restart). */
   clearEffects(): void;
 }

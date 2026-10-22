@@ -95,3 +95,15 @@ export async function holdOverCell(page: Page, slot: number, col: number, row: n
     steps: 8,
   });
 }
+
+/** Play `moves` moves with the most-lines policy (clearingMove). */
+export async function playClearing(page: Page, moves: number): Promise<void> {
+  for (let i = 0; i < moves; i++) {
+    const m = clearingMove(await snapshot(page));
+    await dragToCell(page, m.slot, m.col, m.row);
+  }
+}
+
+export function lastFeedback(page: Page) {
+  return page.evaluate(() => window.__blowup!.lastFeedback());
+}

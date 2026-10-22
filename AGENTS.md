@@ -93,6 +93,10 @@ image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`).
 | `src/render/theme.ts`           | Every colour (tokens)                               |
 | `src/input-logic.ts`            | Pure drag geometry (snapping, drop tolerance)       |
 | `src/test-hook.ts`              | `?seed&test=1` hook (dev/test builds only)          |
+| `src/feedback/plan.ts`          | Turn result → feedback plan (pure)                  |
+| `src/audio.ts`                  | Synthesised Web Audio sound effects                 |
+| `src/haptics.ts`                | Feature-detected vibration                          |
+| `src/settings.ts`               | Mute / haptics / reduced-motion settings            |
 | `tests/`                        | Vitest + Playwright suites (see above)              |
 | `.github/workflows/ci.yml`      | CI pipeline + Pages deploy                          |
 | `.github/workflows/nightly.yml` | Nightly performance job                             |

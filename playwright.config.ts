@@ -20,7 +20,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   snapshotPathTemplate: '{testDir}/__screenshots__/{arg}{ext}',
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.002, animations: 'disabled' } },
+  // Baselines render deterministically in the pinned image, so the tolerance is tight.
+  expect: { toHaveScreenshot: { maxDiffPixels: 50, scale: 'css', animations: 'disabled' } },
   use: {
     baseURL: `http://localhost:${PORT}/`,
     trace: 'retain-on-failure',

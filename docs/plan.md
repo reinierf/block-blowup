@@ -11,7 +11,7 @@ This file tracks progress against those phases and records decisions made along 
 - [x] **Phase 3 — Generator (weighted, fair, mercy rule)** (2026-10-22)
 - [x] **Phase 4 — PixiJS renderer, mobile layout, theme** (2026-10-22; real-phone check pending)
 - [x] **Phase 5 — Input and preview** (2026-10-22; touch lift to tune on a phone)
-- [ ] Phase 6 — Feedback, audio, haptics
+- [x] **Phase 6 — Feedback, audio, haptics** (2026-10-22)
 - [ ] Phase 7 — PWA and screens
 
 ## Phase 0 notes
@@ -145,6 +145,27 @@ This file tracks progress against those phases and records decisions made along 
   baselines for the line-clear preview mid-drag and the greyed-out piece.
 - Taste defaults to review: `touchLiftCells` 1.6, `liftSeconds` 0.12, grey-out alpha 0.35.
 - Still to do by hand on a phone: tune the touch offset (handover suggests 1.5 to 2 cells).
+
+## Phase 6 notes
+
+- Pure feedback plan (`src/feedback/plan.ts`) from the turn result; renderer, audio and
+  haptics only execute it. See `docs/game-design.md` §8a.
+- Popup at the centre of the cleared cells with praise, points and combo; screen shake for
+  2+ lines; board-clear glow and burst; game-over grey-out then score screen with
+  "New best!"; HUD score count-up; synthesised Web Audio sounds; feature-detected
+  vibration; settings module with a mute button in the HUD (full settings screen: Phase 7).
+- Tests: feedback plan unit tests (thresholds, popup position, shake scaling and cap,
+  reduced motion, board clear, game over); audio module tests against a mock
+  AudioContext (unlock, combo pitch, chord size, mute, no Web Audio); haptics feature
+  detection; settings with unavailable, corrupt and old-format storage. E2E: a seeded clear
+  with combo (seed 129), a 2-line clear shakes (seed 11), the same clear does not shake
+  under `prefers-reduced-motion`, mute persists across reloads.
+- Visual baselines: tolerance tightened from 0.2% of pixels (which let a missing HUD button
+  pass) to 50 pixels at CSS scale; baselines re-rendered. The HUD moved to fixed grid
+  columns so "Best" no longer jumps when the combo badge hides.
+- Taste defaults to review: sound design (C5 root, +2 semitones per combo step, one
+  octave cap), shake 3 px + 3 px per extra line (max 12 px), haptic patterns, praise
+  words, game-over fade about 1 s.
 
 ## Known issues
 
