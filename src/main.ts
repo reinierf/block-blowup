@@ -11,7 +11,7 @@ import { Game, GameStatus, type TurnResult } from './game/state';
 import { createHaptics } from './haptics';
 import { createInput, type DragState } from './input';
 import { setupPwa } from './pwa';
-import { computeLayout, type Insets, type Layout } from './render/layout';
+import { computeLayout, fitScale, type Insets, type Layout } from './render/layout';
 import type { Renderer } from './render/renderer';
 import { cssVariables, theme } from './render/theme';
 import { loadSettings, reduceMotion, saveSettings, type ReducedMotionSetting } from './settings';
@@ -114,7 +114,7 @@ function afterGameChange(): void {
   lastFeedback = null;
   bestAtStart = highScore;
   shownScore = game.score;
-  scoreEl.textContent = String(shownScore);
+  showScore();
   persist();
   updateHud();
 }
@@ -189,6 +189,7 @@ function resize(): void {
       height: `${r.h}px`,
     });
   }
+  showScore();
   renderer?.resize(layout);
 }
 
@@ -225,7 +226,17 @@ function tickScore(dt: number): void {
     const step = Math.max(1, Math.ceil((game.score - shownScore) * Math.min(1, dt * 8)));
     shownScore = Math.min(game.score, shownScore + step);
   }
-  scoreEl.textContent = String(shownScore);
+  showScore();
+}
+
+/** Show the score, shrunk if needed so it stays between the HUD and the board. */
+function showScore(): void {
+  const text = String(shownScore);
+  if (scoreEl.textContent !== text) scoreEl.textContent = text;
+  if (!layout) return;
+  // offsetWidth/Height ignore transforms: the unscaled size, including any text scaling.
+  const k = fitScale(scoreEl.offsetWidth, scoreEl.offsetHeight, layout.score);
+  scoreEl.style.transform = k < 1 ? `scale(${k})` : '';
 }
 
 function updateDebug(): void {
@@ -368,6 +379,8 @@ document.addEventListener('visibilitychange', () => {
 
 // --- Init --------------------------------------------------------------------
 resize();
+// The score font (Nunito) can arrive after the first fit, with different metrics.
+void document.fonts?.ready.then(showScore);
 updateHud();
 new ResizeObserver(resize).observe(stage);
 debugEl.hidden = !showDebug;

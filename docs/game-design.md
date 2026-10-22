@@ -212,7 +212,9 @@ that matters — if two of your three pieces still fit, you keep playing.
   RNG (`Generator`); placed cells keep their colour. The game layer only knows colour
   names; the theme maps names to colours.
 - **Layout** (`src/render/layout.ts`, portrait first): HUD (64 px) at the top of the safe
-  area; 56 px of extra space below it for the score; the board as wide as the column
+  area; below it a band of at least 96 px (84 px plus the 12 px gap) for the score, which
+  is centred in it and scaled down if it would not fit (system text scaling, long scores),
+  so it never overlaps the HUD or the board; the board as wide as the column
   allows minus a 16 px gutter, shrinking if the height requires; the tray of three equal
   slots below it, filling the rest of the screen (thumb reach). Pieces sit 40% closer to
   the board than the slot centre (`trayPull`), never so close that a 5-cell piece leaves

@@ -19,8 +19,12 @@ export const LAYOUT = {
   /** Column width cap on tablets, landscape and desktop. */
   maxColumn: 480,
   hudHeight: 64,
-  /** Extra space reserved between the HUD and the board, for the large score. */
-  scoreHeight: 56,
+  /**
+   * Extra space reserved between the HUD and the board, for the large score. With `gap`
+   * the score band is at least 96 px: room for the 62 px score (it shrinks to fit if
+   * text scaling makes it larger).
+   */
+  scoreHeight: 84,
   /** Minimum gap between HUD and board, and between board and tray. */
   gap: 12,
   /** Tray blocks are at least this fraction of a board cell (room is reserved for it). */
@@ -65,7 +69,7 @@ export interface Layout {
   /** The centred content column. */
   column: Rect;
   hud: Rect;
-  /** From the viewport top to the board top; the score is centred in it. */
+  /** From the HUD bottom to the board top; the score is centred in it and never leaves it. */
   score: Rect;
   board: { x: number; y: number; size: number; cell: number };
   hand: { cell: number; slots: HandSlot[] };
@@ -99,7 +103,8 @@ export function computeLayout(width: number, height: number, insets: Insets = NO
 
   const spare = Math.max(0, availH + traySlotPad - boardSize - minTrayH);
   const boardY = hud.y + hud.h + L.gap + L.scoreHeight + spare * L.spareAboveBoard;
-  const score: Rect = { x: column.x, y: 0, w: colW, h: boardY };
+  const hudBottom = hud.y + hud.h;
+  const score: Rect = { x: column.x, y: hudBottom, w: colW, h: boardY - hudBottom };
   const trayY = boardY + boardSize + L.gap;
   const trayH = column.y + column.h - trayY;
   const boardBottom = boardY + boardSize;
@@ -145,6 +150,15 @@ export function trayCellFor(
   let cell = layout.board.cell * LAYOUT.trayScaleMax;
   for (const p of shapes) cell = Math.min(cell, roomW / p.width, roomH / p.height);
   return Math.max(layout.hand.cell, cell);
+}
+
+/**
+ * Scale (at most 1) that fits content of the given size inside a box, so the score can
+ * never spill onto the HUD or the board, whatever the font size or digit count.
+ */
+export function fitScale(contentW: number, contentH: number, box: Rect): number {
+  if (contentW <= 0 || contentH <= 0) return 1;
+  return Math.max(0, Math.min(1, box.w / contentW, box.h / contentH));
 }
 
 /** Index of the tray slot containing (x, y), or -1. */

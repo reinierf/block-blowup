@@ -3,6 +3,7 @@ import {
   LAYOUT,
   NO_INSETS,
   computeLayout,
+  fitScale,
   slotAt,
   trayCellFor,
   type Insets,
@@ -75,10 +76,14 @@ describe.each(VIEWPORTS)('layout at $name', ({ w, h, insets }) => {
     }
   });
 
-  it('spans the score from the viewport top to the board, centred on the board', () => {
-    expect(l.score.y).toBe(0);
+  it('puts the score band between the HUD and the board, centred on the board', () => {
+    expect(l.score.y).toBeCloseTo(l.hud.y + l.hud.h);
     expect(l.score.y + l.score.h).toBeCloseTo(l.board.y);
     expect(l.score.x + l.score.w / 2).toBeCloseTo(l.board.x + l.board.size / 2);
+  });
+
+  it('leaves room for the 62 px score without shrinking it', () => {
+    expect(l.score.h).toBeGreaterThanOrEqual(62);
   });
 
   it('keeps a 5-cell piece inside its slot, centred where the tray draws it', () => {
@@ -154,6 +159,22 @@ describe('layout specifics', () => {
     ]);
     expect(long).toBeLessThan(small);
     expect(long).toBeGreaterThanOrEqual(l.hand.cell);
+  });
+
+  it('fits the score inside its band whatever its size, never enlarging it', () => {
+    // Short phone, no spare height: the tightest band (Fairphone-like, browser bars shown).
+    const l = computeLayout(360, 600);
+    expect(l.score.h).toBe(LAYOUT.scoreHeight + LAYOUT.gap);
+    // At least 17 px between the 62 px score and the board, even on the tightest layout.
+    expect((l.score.h - 62) / 2).toBeGreaterThanOrEqual(17);
+    expect(fitScale(100, 62, l.score)).toBe(1);
+    // Text scaling at 130%: 62 px renders as ~81 px and must shrink back into the band.
+    const k = fitScale(120, 81, l.score);
+    expect(81 * k).toBeLessThanOrEqual(l.score.h + 1e-9);
+    expect(l.score.y + (l.score.h + 81 * k) / 2).toBeLessThanOrEqual(l.board.y + 1e-9);
+    // A very long score is limited by the width instead.
+    expect(400 * fitScale(400, 62, l.score)).toBeLessThanOrEqual(l.score.w + 1e-9);
+    expect(fitScale(0, 0, l.score)).toBe(1);
   });
 
   it('caps the column on wide screens', () => {

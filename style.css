@@ -112,7 +112,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* --- Score (main.ts spans it from the viewport top to the board) --------------- */
+/* --- Score (main.ts places it between the HUD and the board, scaled to fit) ----- */
 #score-wrap {
   position: fixed;
   display: flex;
@@ -127,8 +127,7 @@ body {
   font-weight: 700;
   line-height: 1;
   text-shadow: 2px 3px 3px var(--score-shadow);
-  /* Below the centre of the band, clear of the HUD. */
-  transform: translateY(0.8em);
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
