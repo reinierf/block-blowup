@@ -85,9 +85,21 @@ body {
   justify-self: center;
 }
 
-#open-settings {
+.hud-actions {
   grid-column: 3;
   justify-self: end;
+  display: flex;
+  align-items: center;
+}
+
+#fullscreen svg {
+  width: 30px;
+  height: 30px;
+}
+
+#fullscreen[aria-pressed='false'] .fs-exit,
+#fullscreen[aria-pressed='true'] .fs-enter {
+  display: none;
 }
 
 .hud-item {

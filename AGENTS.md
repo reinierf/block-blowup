@@ -110,6 +110,7 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 | `src/audio.ts`                | Synthesised Web Audio sound effects                 |
 | `src/haptics.ts`              | Feature-detected vibration                          |
 | `src/settings.ts`             | Mute / haptics / reduced-motion settings            |
+| `src/fullscreen.ts`           | Fullscreen toggle (browser tabs only)               |
 | `tests/`                      | Vitest + Playwright suites (see above)              |
 | `.github/workflows/ci.yml`    | CI pipeline + Pages deploy                          |
 | `.github/workflows/perf.yml`  | Weekly performance job (also runnable by hand)      |

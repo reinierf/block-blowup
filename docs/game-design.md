@@ -229,8 +229,10 @@ that matters — if two of your three pieces still fit, you keep playing.
   font size below the midpoint between the viewport top and the board; counts up to the
   new value in about 0.4 s.
 - **HUD:** best score at the top left (31 px Nunito Bold with the score's shadow, a gold crown, no label), a combo badge (from
-  combo 2) in the middle, and a settings gear (38 px) at the top right. Fixed grid columns, so
-  nothing shifts when the badge appears.
+  combo 2) in the middle, and a settings gear (38 px) at the top right. Left of the gear, a
+  fullscreen toggle (30 px, `src/fullscreen.ts`), shown only in a browser tab where the
+  Fullscreen API works: not in the installed app, and not on iPhone Safari. Fixed grid
+  columns, so nothing shifts when the badge appears.
 
 ## 8a. Feedback
 

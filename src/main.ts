@@ -1,6 +1,6 @@
 // src/main.ts
 // Bootstrap: theme, settings, screens, game (new or resumed), renderer, input, feedback
-// (audio, haptics), HUD, PWA, and the frame loop.
+// (audio, haptics), HUD, fullscreen toggle, PWA, and the frame loop.
 
 import { AudioManager } from './audio';
 import { FEEDBACK, feedbackFor, type FeedbackPlan } from './feedback/plan';
@@ -8,6 +8,7 @@ import { difficultyFor } from './game/difficulty';
 import { Mulberry32 } from './game/rng';
 import { restoreGame, saveGame, type SavedGame } from './game/save';
 import { Game, GameStatus, type TurnResult } from './game/state';
+import { createFullscreen } from './fullscreen';
 import { createHaptics } from './haptics';
 import { createInput, type DragState } from './input';
 import { setupPwa } from './pwa';
@@ -355,6 +356,16 @@ for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"
     applySettings();
   });
 }
+// --- Fullscreen toggle (browser tabs only) -------------------------------------
+const fullscreen = createFullscreen();
+const fullscreenBtn = el<HTMLButtonElement>('fullscreen');
+fullscreenBtn.hidden = !fullscreen.supported;
+fullscreenBtn.addEventListener('click', () => fullscreen.toggle());
+fullscreen.onChange(() => {
+  fullscreenBtn.setAttribute('aria-pressed', String(fullscreen.active));
+  fullscreenBtn.setAttribute('aria-label', fullscreen.active ? 'Exit fullscreen' : 'Fullscreen');
+});
+
 el('open-settings').addEventListener('click', () => openSettings(false));
 el('start-settings').addEventListener('click', () => openSettings(true));
 el('settings-done').addEventListener('click', () => {

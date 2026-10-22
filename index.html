@@ -38,14 +38,32 @@
         <div class="hud-item combo" id="combo-wrap" hidden>
           <span id="combo">Combo ×1</span>
         </div>
-        <button id="open-settings" class="icon-button" type="button" aria-label="Settings">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
-              transform="translate(-1 0)"
-            />
-          </svg>
-        </button>
+        <div class="hud-actions">
+          <!-- Browser tabs only (main.ts); the installed app is already fullscreen. -->
+          <button
+            id="fullscreen"
+            class="icon-button"
+            type="button"
+            aria-label="Fullscreen"
+            aria-pressed="false"
+            hidden
+          >
+            <svg class="fs-enter" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4h6v2H6v4H4zM14 4h6v6h-2V6h-4zM4 14h2v4h4v2H4zM18 14h2v6h-6v-2h4z" />
+            </svg>
+            <svg class="fs-exit" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 4h2v6H4V8h4zM14 4h2v4h4v2h-6zM4 14h6v6H8v-4H4zM14 14h6v2h-4v4h-2z" />
+            </svg>
+          </button>
+          <button id="open-settings" class="icon-button" type="button" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M19.4 13a7.6 7.6 0 0 0 0-2l2-1.6-2-3.4-2.4 1a7.4 7.4 0 0 0-1.7-1L15 3.5h-4l-.4 2.5a7.4 7.4 0 0 0-1.7 1l-2.4-1-2 3.4L6.6 11a7.6 7.6 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a7.4 7.4 0 0 0 1.7 1l.4 2.5h4l.4-2.5a7.4 7.4 0 0 0 1.7-1l2.4 1 2-3.4zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"
+                transform="translate(-1 0)"
+              />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <!-- Visible before any script runs, so the first paint is the start screen. -->
