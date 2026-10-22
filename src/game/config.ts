@@ -61,7 +61,7 @@ export const DIFFICULTY_CURVE: readonly (readonly [score: number, difficulty: nu
  */
 export const FAMILY_WEIGHTS: Readonly<Record<ShapeFamily, readonly [easy: number, hard: number]>> =
   {
-    single: [6, 2],
+    single: [1, 0],
     line2: [6, 3],
     line3: [5, 4],
     line4: [3, 4],

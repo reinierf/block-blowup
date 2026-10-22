@@ -14,6 +14,9 @@ export const FEEDBACK = {
   shakeSeconds: 0.35,
   particlesPerCell: 3,
   particlesPerCellReduced: 1,
+  /** Particles per placed cell on every drop (may be fractional): a smaller, slower puff. */
+  dropParticlesPerCell: 2.8,
+  dropParticlesPerCellReduced: 0,
   /** Vibration patterns (ms). */
   hapticPlace: 12,
   hapticClear: [20, 30, 35] as number[],
@@ -39,6 +42,8 @@ export interface FeedbackPlan {
   /** Shake amplitude in CSS px (0 = none). */
   shake: number;
   particlesPerCell: number;
+  /** Particles per placed cell (every drop). */
+  dropParticlesPerCell: number;
   /** Full-board celebration (board clear). */
   celebrate: boolean;
   sounds: SoundCue[];
@@ -88,6 +93,9 @@ export function feedbackFor(result: TurnResult, opts: { reduceMotion: boolean })
     particlesPerCell: opts.reduceMotion
       ? FEEDBACK.particlesPerCellReduced
       : FEEDBACK.particlesPerCell,
+    dropParticlesPerCell: opts.reduceMotion
+      ? FEEDBACK.dropParticlesPerCellReduced
+      : FEEDBACK.dropParticlesPerCell,
     celebrate: result.allClear,
     sounds,
     haptic,

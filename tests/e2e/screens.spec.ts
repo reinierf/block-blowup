@@ -54,7 +54,8 @@ test('game over shows the score screen with "New best!"', async ({ page }) => {
   await dragToCell(page, 0, 0, 0);
   await expect(page.locator('#overlay')).toBeVisible();
   await expect(page.locator('#new-best')).toBeVisible();
-  await expect(page.locator('#overlay-msg')).toContainText('Score 501');
+  await expect(page.locator('#over-score')).toHaveText('501');
+  await expect(page.locator('#over-best')).toHaveText('501');
   expect((await snapshot(page)).status).toBe('gameOver');
   // The finished game is no longer saved.
   expect(await page.evaluate(() => localStorage.getItem('block-blowup.game'))).toBeNull();

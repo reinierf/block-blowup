@@ -12,11 +12,12 @@ import {
   Text,
   Texture,
 } from 'pixi.js';
+import { radialSpawns, spawnsOnCentreLine, type Spawn } from '../feedback/particles';
 import { FEEDBACK, type FeedbackPlan } from '../feedback/plan';
 import type { Game, TurnResult } from '../game/state';
 import type { DragState } from '../input';
 import { INPUT } from '../input-logic';
-import type { Layout } from './layout';
+import { trayCellFor, type Layout } from './layout';
 import type { Renderer, RendererOptions } from './renderer';
 import { hexToNumber, shade, theme } from './theme';
 
@@ -26,6 +27,24 @@ const CELL_GAP = 0.06;
 /** Tray pieces that fit nowhere: dimmed and desaturated. */
 const UNPLACEABLE_ALPHA = 0.35;
 const UNPLACEABLE_TINT = 0x8a8f99;
+
+/** Particle drag (1/s): speed falls by e^-k per second, so a burst spreads, slows and fades. */
+const PARTICLE_DRAG = 3;
+
+/** Newly dealt tray pieces pop in (scale 0 → slight overshoot → 1), with a white puff. */
+const DEAL_POP = {
+  seconds: 0.3,
+  /** Delay between the three slots. */
+  stagger: 0.07,
+  /** Back-ease strength: higher overshoots more (1.2 ≈ 6%). */
+  overshoot: 1.2,
+  particlesPerCell: 2,
+  particleSpeed: 80,
+  particleSeconds: 0.5,
+};
+
+/** Back-out ease: 0 → 1, overshooting slightly before settling. */
+const easeOutBack = (t: number, k: number) => 1 + (k + 1) * (t - 1) ** 3 + k * (t - 1) ** 2;
 
 const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
 
@@ -40,6 +59,7 @@ interface Burst {
   t: number;
   dur: number;
   parts: { p: Particle; vx: number; vy: number }[];
+  layer: ParticleContainer;
 }
 interface Popup {
   kind: 'popup';
@@ -81,13 +101,14 @@ export async function createPixiRenderer(
   const ghostLayer = new Container();
   const flashLayer = new Container();
   const trayLayer = new Container();
-  const particles = new ParticleContainer({
-    dynamicProperties: { position: true, color: true, vertex: false, rotation: false },
-  });
+  const particleProps = { position: true, color: true, vertex: false, rotation: false };
+  const particles = new ParticleContainer({ dynamicProperties: particleProps });
+  /** Behind the tray: the deal puff. */
+  const trayParticles = new ParticleContainer({ dynamicProperties: particleProps });
   const dragLayer = new Container();
   const popupLayer = new Container();
   boardLayer.addChild(panel, cellLayer, ghostLayer, flashLayer);
-  app.stage.addChild(boardLayer, trayLayer, particles, dragLayer, popupLayer);
+  app.stage.addChild(boardLayer, trayParticles, trayLayer, particles, dragLayer, popupLayer);
 
   let layout: Layout | null = null;
   let layoutVersion = 0;
@@ -111,10 +132,6 @@ export async function createPixiRenderer(
   function blockColor(color: string): string {
     if (color === GREY) return theme.gameOverBlock;
     return theme.blocks[color as keyof typeof theme.blocks] ?? theme.textSecondary;
-  }
-
-  function blockHex(color: string): number {
-    return hexToNumber(blockColor(color));
   }
 
   /** Bevelled block: lighter top-left edge, darker bottom-right, soft gloss. */
@@ -194,6 +211,12 @@ export async function createPixiRenderer(
   // --- Tray and drag piece ---------------------------------------------------------------
 
   let trayKeys: string[] = [];
+  /** Tray cell size for the current hand (see trayCellFor). */
+  let trayCell = 0;
+  /** Piece uids in the tray last frame; a uid not in it is newly dealt. */
+  let trayUids = new Set<number>();
+  /** Running pop-ins: piece uid → seconds since its pop started (negative while delayed). */
+  const pops = new Map<number, number>();
 
   function pieceContainer(
     cells: readonly (readonly [number, number])[],
@@ -212,30 +235,66 @@ export async function createPixiRenderer(
     return c;
   }
 
-  function drawTray(game: Game, drag: DragState | null): void {
+  function drawTray(game: Game, drag: DragState | null, dt: number): void {
     const l = layout!;
+    for (const [uid, t] of pops) {
+      if (t + dt >= DEAL_POP.seconds) pops.delete(uid);
+      else pops.set(uid, t + dt);
+    }
     const keys = l.hand.slots.map((s) => {
       const piece = game.hand[s.index];
       return piece ? `${layoutVersion}:${piece.uid}` : '';
     });
     if (keys.join('|') !== trayKeys.join('|')) {
+      // A new deal (or layout) brings keys not seen before: size the tray for that hand.
+      // Placing a piece only removes keys, so the rest keep their size.
+      if (keys.some((k) => k && !trayKeys.includes(k))) {
+        trayCell = trayCellFor(
+          l,
+          game.hand.flatMap((p) => (p ? [p.shape] : [])),
+        );
+      }
       trayKeys = keys;
       trayLayer.removeChildren().forEach((c) => c.destroy({ children: true }));
       for (const s of l.hand.slots) {
         const piece = game.hand[s.index];
         const c = piece
-          ? pieceContainer(piece.shape.cells, piece.color, l.hand.cell)
+          ? pieceContainer(piece.shape.cells, piece.color, trayCell)
           : new Container();
         if (piece) {
-          c.position.set(
-            s.cx - (piece.shape.width * l.hand.cell) / 2,
-            s.cy - (piece.shape.height * l.hand.cell) / 2,
-          );
+          // Pivot on the piece's centre, so the pop-in scales it in place.
+          const w = piece.shape.width * trayCell;
+          const h = piece.shape.height * trayCell;
+          c.pivot.set(w / 2, h / 2);
+          c.position.set(s.cx, s.cy);
+          if (!trayUids.has(piece.uid) && !opts.freezeAnimations) {
+            pops.set(piece.uid, -s.index * DEAL_POP.stagger);
+            const n = piece.shape.cells.length * DEAL_POP.particlesPerCell;
+            const spawns = spawnsOnCentreLine(piece.shape.cells, n, Math.random);
+            effects.push({
+              kind: 'burst',
+              t: 0,
+              dur: DEAL_POP.particleSeconds,
+              layer: trayParticles,
+              parts: burst(spawns, DEAL_POP.particleSpeed, {
+                x0: s.cx - w / 2,
+                y0: s.cy - h / 2,
+                unit: trayCell,
+                layer: trayParticles,
+                tint: hexToNumber(theme.dealSparkle),
+              }),
+            });
+          }
         }
         trayLayer.addChild(c);
       }
+      trayUids = new Set(game.hand.flatMap((p) => (p ? [p.uid] : [])));
     }
     trayLayer.children.forEach((c, i) => {
+      const t = pops.get(game.hand[i]?.uid ?? -1);
+      c.scale.set(
+        t === undefined ? 1 : t <= 0 ? 0 : easeOutBack(t / DEAL_POP.seconds, DEAL_POP.overshoot),
+      );
       c.visible = !drag || drag.handIndex !== i;
       const fits = game.pieceFits(i);
       c.alpha = fits ? 1 : UNPLACEABLE_ALPHA;
@@ -262,9 +321,9 @@ export async function createPixiRenderer(
     // Interpolate from where the piece sits in the tray to where it follows the pointer.
     const l = layout!;
     const slot = l.hand.slots[drag.handIndex]!;
-    const trayScale = l.hand.cell / l.board.cell;
-    const fromX = slot.cx - (drag.shape.width * l.hand.cell) / 2;
-    const fromY = slot.cy - (drag.shape.height * l.hand.cell) / 2;
+    const trayScale = trayCell / l.board.cell;
+    const fromX = slot.cx - (drag.shape.width * trayCell) / 2;
+    const fromY = slot.cy - (drag.shape.height * trayCell) / 2;
     const e = easeOut(lift);
     dragLayer.scale.set(trayScale + (1 - trayScale) * e);
     dragLayer.position.set(fromX + (drag.originX - fromX) * e, fromY + (drag.originY - fromY) * e);
@@ -327,28 +386,38 @@ export async function createPixiRenderer(
     });
   }
 
-  function burst(x: number, y: number, tint: number, count: number, speed: number): Burst['parts'] {
+  /** Every block colour, for multicoloured particles. */
+  const particleTints = Object.values(theme.blocks).map(hexToNumber);
+
+  /**
+   * One particle per spawn, each in a random block colour unless `tint` is given. Spawns
+   * are in cells of `unit` px from (x0, y0); by default board cells on the board.
+   */
+  function burst(
+    spawns: readonly Spawn[],
+    speed: number,
+    o: { x0?: number; y0?: number; unit?: number; layer?: ParticleContainer; tint?: number } = {},
+  ): Burst['parts'] {
     const parts: Burst['parts'] = [];
-    const cell = layout!.board.cell;
-    for (let i = 0; i < count; i++) {
+    const b = layout!.board;
+    const { x0: bx = b.x, y0: by = b.y, unit: cell = b.cell, layer = particles } = o;
+    for (const sp of spawns) {
+      const tint = o.tint ?? particleTints[Math.floor(Math.random() * particleTints.length)]!;
       const size = (cell * (0.12 + Math.random() * 0.14)) / 8;
       const p = new Particle({
         texture: particleTexture,
-        x,
-        y,
+        x: bx + sp.x * cell,
+        y: by + sp.y * cell,
         scaleX: size,
         scaleY: size,
         anchorX: 0.5,
         anchorY: 0.5,
         tint,
       });
-      particles.addParticle(p);
-      const a = Math.random() * Math.PI * 2;
-      parts.push({
-        p,
-        vx: Math.cos(a) * speed * (0.4 + Math.random() * 0.6),
-        vy: Math.sin(a) * speed * (0.4 + Math.random() * 0.6) - speed * 0.5,
-      });
+      layer.addParticle(p);
+      // No gravity: drag slows them as they fade.
+      const v = speed * (0.4 + Math.random() * 0.6);
+      parts.push({ p, vx: sp.dx * v, vy: sp.dy * v });
     }
     return parts;
   }
@@ -357,6 +426,14 @@ export async function createPixiRenderer(
     if (opts.freezeAnimations || !layout) return;
     const b = layout.board;
     const s = b.cell * (1 - 2 * CELL_GAP);
+
+    if (plan.dropParticlesPerCell > 0) {
+      // A small puff off the placed piece; slower and shorter-lived than a line clear.
+      const cells = result.placedCells;
+      const n = Math.round(cells.length * plan.dropParticlesPerCell);
+      const parts = burst(spawnsOnCentreLine(cells, n, Math.random), 150);
+      effects.push({ kind: 'burst', t: 0, dur: 0.55, parts, layer: particles });
+    }
 
     if (result.clearedCells.length > 0) {
       const sprites = result.clearedCells.map((c) => {
@@ -369,14 +446,10 @@ export async function createPixiRenderer(
       });
       effects.push({ kind: 'flash', t: 0, dur: 0.28, sprites });
 
-      const parts: Burst['parts'] = [];
-      for (const c of result.clearedCells) {
-        const p = cellPos(c.x, c.y);
-        parts.push(
-          ...burst(p.x + s / 2, p.y + s / 2, blockHex(c.color), plan.particlesPerCell, 260),
-        );
-      }
-      effects.push({ kind: 'burst', t: 0, dur: 0.9, parts });
+      const cells = result.clearedCells.map((c): [number, number] => [c.x, c.y]);
+      const n = cells.length * plan.particlesPerCell;
+      const parts = burst(spawnsOnCentreLine(cells, n, Math.random), 260);
+      effects.push({ kind: 'burst', t: 0, dur: 0.9, parts, layer: particles });
     }
 
     if (plan.popup) {
@@ -410,15 +483,8 @@ export async function createPixiRenderer(
       g.alpha = 0;
       flashLayer.addChild(g);
       effects.push({ kind: 'glow', t: 0, dur: 0.9, g });
-      const parts: Burst['parts'] = [];
-      const colors = Object.values(theme.blocks).map(hexToNumber);
-      const n = plan.particlesPerCell * 20;
-      colors.forEach((tint) =>
-        parts.push(
-          ...burst(b.x + b.size / 2, b.y + b.size / 2, tint, Math.ceil(n / colors.length), 520),
-        ),
-      );
-      effects.push({ kind: 'burst', t: 0, dur: 1.2, parts });
+      const parts = burst(radialSpawns(4, 4, plan.particlesPerCell * 20, Math.random), 520);
+      effects.push({ kind: 'burst', t: 0, dur: 1.2, parts, layer: particles });
     }
   }
 
@@ -449,8 +515,10 @@ export async function createPixiRenderer(
           sp.scale.set(1 - p * 0.45);
         }
       } else if (e.kind === 'burst') {
+        const drag = Math.exp(-PARTICLE_DRAG * dt);
         for (const part of e.parts) {
-          part.vy += 900 * dt;
+          part.vx *= drag;
+          part.vy *= drag;
           part.p.x += part.vx * dt;
           part.p.y += part.vy * dt;
           part.p.alpha = 1 - p;
@@ -491,12 +559,14 @@ export async function createPixiRenderer(
   }
 
   function animating(): boolean {
-    return effects.length > 0 || shake.amp > 0 || lift < 1 || !!gameOverFade?.onDone;
+    return (
+      effects.length > 0 || pops.size > 0 || shake.amp > 0 || lift < 1 || !!gameOverFade?.onDone
+    );
   }
 
   function disposeEffect(e: Effect): void {
     if (e.kind === 'flash') e.sprites.forEach((sp) => sp.destroy());
-    else if (e.kind === 'burst') e.parts.forEach((part) => particles.removeParticle(part.p));
+    else if (e.kind === 'burst') e.parts.forEach((part) => e.layer.removeParticle(part.p));
     else if (e.kind === 'popup') e.node.destroy({ children: true });
     else e.g.destroy();
   }
@@ -547,7 +617,7 @@ export async function createPixiRenderer(
       for (const i of f.order.slice(0, n)) cellSprites[i]!.texture = blockTexture(GREY);
     }
     drawGhost(drag);
-    drawTray(game, drag);
+    drawTray(game, drag, dt);
     drawDrag(drag, dt);
     updateEffects(dt);
     app.renderer.render(app.stage);

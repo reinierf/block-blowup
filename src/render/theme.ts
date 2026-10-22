@@ -1,7 +1,7 @@
 // src/render/theme.ts
-// Every colour in the game lives here. The default theme is close to the original's look
-// but subdued: lower saturation, less contrast, softer gloss (HANDOVER.md §3.5).
-// A "vivid" theme can be added later as another Theme object.
+// Every colour in the game lives here. The default theme, VIVID, follows the original's
+// look: royal-blue background, dark navy board, saturated blocks with strong bevels.
+// SUBDUED is the calmer variant from HANDOVER.md §3.5 (lower saturation, softer gloss).
 
 import type { PieceColor } from '../game/pieces';
 
@@ -15,8 +15,12 @@ export interface Theme {
   textSecondary: string;
   /** Combo, praise, highlights. */
   accent: string;
-  /** Overlay scrim behind dialogs. */
+  /** Translucent backing (debug readout). Screens blur the game instead of a scrim. */
   scrim: string;
+  /** Drop shadow behind the score (offset to the bottom right). */
+  scoreShadow: string;
+  /** Particles behind newly dealt tray pieces. */
+  dealSparkle: string;
   /** Button fill and its text. */
   button: string;
   buttonText: string;
@@ -42,6 +46,8 @@ export const SUBDUED: Theme = {
   textSecondary: '#9AA6BF',
   accent: '#F2C46D',
   scrim: 'rgba(10, 14, 26, 0.72)',
+  scoreShadow: 'rgba(0, 0, 0, 0.3)',
+  dealSparkle: '#E6EAF2',
   button: '#72B77A',
   buttonText: '#10182A',
   ghostValid: '#E6EAF2',
@@ -61,7 +67,38 @@ export const SUBDUED: Theme = {
   gloss: 0.1,
 };
 
-export const theme: Theme = SUBDUED;
+export const VIVID: Theme = {
+  bgTop: '#1c49c7',
+  /** bgTop mixed with 30% white. */
+  bgBottom: '#5978cf',
+  boardPanel: '#1C2754',
+  emptyCell: '#243163',
+  text: '#FFFFFF',
+  textSecondary: '#C9D4F2',
+  accent: '#FFC83D',
+  scrim: 'rgba(15, 22, 52, 0.72)',
+  scoreShadow: 'rgba(10, 16, 48, 0.35)',
+  dealSparkle: '#FFFFFF',
+  button: '#5DCB48',
+  buttonText: '#0F1A3A',
+  ghostValid: '#FFFFFF',
+  ghostInvalid: '#EE4B45',
+  gameOverBlock: '#5A6588',
+  blocks: {
+    red: '#EE4B45',
+    orange: '#F5902E',
+    yellow: '#F8CB3A',
+    green: '#5DCB48',
+    cyan: '#3CC7EE',
+    blue: '#3E72E6',
+    purple: '#A05BDE',
+  },
+  bevelLight: 0.3,
+  bevelDark: 0.32,
+  gloss: 0.18,
+};
+
+export const theme: Theme = VIVID;
 
 /** '#rrggbb' → 0xrrggbb, for Pixi. */
 export function hexToNumber(hex: string): number {
@@ -87,6 +124,7 @@ export function cssVariables(t: Theme = theme): Record<string, string> {
     '--accent': t.accent,
     '--panel': t.boardPanel,
     '--scrim': t.scrim,
+    '--score-shadow': t.scoreShadow,
     '--button': t.button,
     '--button-text': t.buttonText,
   };

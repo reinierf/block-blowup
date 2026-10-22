@@ -33,6 +33,7 @@ function el<T extends HTMLElement>(id: string): T {
 
 const stage = el('stage');
 const hud = el('hud');
+const scoreWrap = el('score-wrap');
 const scoreEl = el('score');
 const bestEl = el('best');
 const comboWrap = el('combo-wrap');
@@ -46,7 +47,8 @@ const soundToggle = el<HTMLInputElement>('set-sound');
 const hapticsToggle = el<HTMLInputElement>('set-haptics');
 const hapticsNote = el('haptics-note');
 const overlay = el('overlay');
-const overlayMsg = el('overlay-msg');
+const overScore = el('over-score');
+const overBest = el('over-best');
 const newBestEl = el('new-best');
 const debugEl = el('debug');
 
@@ -176,12 +178,17 @@ function resize(): void {
   const h = stage.clientHeight;
   if (w < 1 || h < 1) return;
   layout = computeLayout(w, h, readInsets());
-  Object.assign(hud.style, {
-    left: `${layout.hud.x}px`,
-    top: `${layout.hud.y}px`,
-    width: `${layout.hud.w}px`,
-    height: `${layout.hud.h}px`,
-  });
+  for (const [node, r] of [
+    [hud, layout.hud],
+    [scoreWrap, layout.score],
+  ] as const) {
+    Object.assign(node.style, {
+      left: `${r.x}px`,
+      top: `${r.y}px`,
+      width: `${r.w}px`,
+      height: `${r.h}px`,
+    });
+  }
   renderer?.resize(layout);
 }
 
@@ -253,7 +260,8 @@ function showStart(): void {
 }
 
 function showGameOver(): void {
-  overlayMsg.textContent = `Score ${game.score}  ·  Best ${Math.max(highScore, game.score)}`;
+  overScore.textContent = String(game.score);
+  overBest.textContent = String(Math.max(highScore, game.score));
   newBestEl.hidden = !(game.score > bestAtStart && game.score > 0);
   overlay.hidden = false;
 }

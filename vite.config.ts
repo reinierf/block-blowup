@@ -37,7 +37,7 @@ export default defineConfig(({ command, isPreview }) => ({
       },
       workbox: {
         // Precache everything the game needs, so it runs fully offline.
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,woff2}'],
         cleanupOutdatedCaches: true,
       },
     }),

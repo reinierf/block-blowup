@@ -1,4 +1,13 @@
 /* style.css: colours come from src/render/theme.ts via CSS custom properties. */
+
+/* Nunito Bold (latin subset, SIL OFL: public/fonts/OFL.txt), for the score. */
+@font-face {
+  font-family: 'Nunito';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/nunito-latin-700.woff2') format('woff2');
+}
 * {
   box-sizing: border-box;
 }
@@ -56,17 +65,19 @@ body {
 /* --- HUD (positioned by main.ts from the layout) ------------------------------ */
 #hud {
   position: fixed;
-  /* Fixed columns, so nothing shifts when the combo badge appears or disappears. */
+  /* Fixed columns, so nothing shifts when the combo badge appears or disappears. Equal
+     outer columns keep the badge in the middle. */
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 16px;
+  padding: 0 4px 0 16px;
   pointer-events: none;
 }
 
-#hud > :nth-child(1) {
+#best-wrap {
   grid-column: 1;
+  justify-self: start;
 }
 
 #combo-wrap {
@@ -74,33 +85,50 @@ body {
   justify-self: center;
 }
 
-#hud > :nth-child(3) {
-  grid-column: 3;
-}
-
 #open-settings {
-  grid-column: 4;
+  grid-column: 3;
+  justify-self: end;
 }
 
 .hud-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 6px;
   line-height: 1.1;
-  min-width: 88px;
 }
 
-.hud-label {
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+.crown {
+  width: 24px;
+  height: 24px;
+  fill: var(--accent);
 }
 
-#score,
 #best {
-  font-size: 24px;
-  font-weight: 800;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 31px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 2px 3px 3px var(--score-shadow);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Score (main.ts spans it from the viewport top to the board) --------------- */
+#score-wrap {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#score {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 62px;
+  font-weight: 700;
+  line-height: 1;
+  text-shadow: 2px 3px 3px var(--score-shadow);
+  /* Below the centre of the band, clear of the HUD. */
+  transform: translateY(0.8em);
   font-variant-numeric: tabular-nums;
 }
 
@@ -108,15 +136,17 @@ body {
   pointer-events: auto;
   min-width: 44px;
   min-height: 44px;
-  padding: 10px;
+  padding: 6px;
   border-radius: 12px;
   background: transparent;
   color: var(--text-secondary);
 }
 
+/* 60% larger than the 24px base icon. */
 .icon-button svg {
-  width: 24px;
-  height: 24px;
+  display: block;
+  width: 38px;
+  height: 38px;
   fill: currentColor;
 }
 
@@ -127,14 +157,17 @@ body {
 }
 
 /* --- Screens: start, settings, game over --------------------------------------- */
+/* The game stays visible behind every screen, blurred, instead of under a dark scrim.
+   Cards match the board (panel colour, rounded, faint rim) and the HUD (Nunito, shadows). */
 .screen {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
   padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
-  background: var(--scrim);
-  backdrop-filter: blur(4px);
+  background: transparent;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
   z-index: 10;
   -webkit-user-select: none;
   user-select: none;
@@ -146,20 +179,25 @@ body {
   gap: 12px;
   width: min(100%, 340px);
   text-align: center;
-  padding: 28px 24px;
-  border-radius: 20px;
+  padding: 26px 24px 24px;
+  border-radius: 24px;
   background: var(--panel);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
 .screen-card h1,
 .screen-card h2 {
   margin: 0 0 4px;
-  font-size: 28px;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  text-shadow: 2px 3px 3px var(--score-shadow);
 }
 
 .screen-card .title {
-  font-size: 34px;
+  font-size: 38px;
   letter-spacing: 0.01em;
 }
 
@@ -168,20 +206,64 @@ body {
   color: var(--text-secondary);
 }
 
-.best-line span {
-  color: var(--text);
-  font-weight: 800;
+/* Crown + best score, as in the HUD. */
+.best-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text) !important;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
   font-variant-numeric: tabular-nums;
 }
 
 .new-best {
   margin: 0 !important;
   color: var(--accent) !important;
-  font-weight: 800;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
   font-size: 20px;
 }
 
-/* Settings controls */
+/* Game over: the score, large. */
+.over-card {
+  gap: 4px;
+}
+
+.over-label {
+  margin: 10px 0 0 !important;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.over-score {
+  margin: 0 !important;
+  color: var(--text) !important;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 64px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 2px 3px 3px var(--score-shadow);
+}
+
+.over-card .best-line {
+  margin: 6px 0 18px;
+}
+
+.over-card button {
+  margin-top: 8px;
+}
+
+.screen-card button {
+  font-size: 18px;
+}
+
+/* Settings controls: rows like the toggles below, then a segmented control on a recessed
+   track, the selected option green like a switch that is on. */
 .toggle {
   display: flex;
   align-items: center;
@@ -239,24 +321,29 @@ body {
 }
 
 .segmented {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 4px;
-  margin: 4px 0 8px;
-  padding: 4px;
+  margin: 4px 0 12px;
+  padding: 0;
   border: none;
-  border-radius: 12px;
-  background: var(--bg-bottom);
 }
 
+/* The label sits above the track, aligned with the toggle labels, not inside it. */
 .segmented legend {
-  float: left;
-  grid-column: 1 / -1;
-  width: 100%;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   padding: 0;
   font-weight: 700;
   text-align: left;
+}
+
+.segmented-track {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .segmented label {
@@ -275,14 +362,22 @@ body {
   display: grid;
   place-items: center;
   min-height: 40px;
-  border-radius: 9px;
+  padding: 0 12px;
+  line-height: 1;
+  border-radius: 10px;
   color: var(--text-secondary);
   font-weight: 700;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .segmented input:checked + span {
-  background: var(--panel);
-  color: var(--text);
+  background: var(--button);
+  color: var(--button-text);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
+  /* Centre on the face above the 3px edge. */
+  padding-bottom: 3px;
 }
 
 .segmented input:focus-visible + span {
@@ -301,13 +396,15 @@ body {
   padding: 8px 8px 8px 16px;
   border-radius: 14px;
   background: var(--panel);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.06),
+    0 10px 30px rgba(0, 0, 0, 0.35);
   z-index: 20;
   font-weight: 700;
 }
 
 .toast button {
-  padding: 8px 16px;
+  padding: 9px 16px 13px;
 }
 
 #debug {
@@ -327,27 +424,51 @@ body {
 }
 
 /* --- Buttons ---------------------------------------------------------------------- */
+/* Chunky, block-like buttons: Nunito, a darker bottom edge, pressed in on tap. */
 button {
   font: inherit;
-  font-weight: 800;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
   cursor: pointer;
   border: none;
   border-radius: 12px;
+  /* Centre the label on the face above the 4px bottom edge: line-height 1 removes the
+     font's uneven leading, and the bottom padding is the edge taller than the top. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
   min-height: 44px;
-  padding: 12px 30px;
+  padding: 13px 30px 17px;
   color: var(--button-text);
   background: var(--button);
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.18);
   transition: transform 0.06s ease;
 }
 
 button.secondary {
+  padding-top: 15px;
+  padding-bottom: 15px;
   color: var(--text);
   background: transparent;
   box-shadow: inset 0 0 0 2px var(--text-secondary);
 }
 
 button:active {
-  transform: translateY(1px) scale(0.99);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+  transform: translateY(2px);
+}
+
+button.secondary:active {
+  box-shadow: inset 0 0 0 2px var(--text-secondary);
+}
+
+/* Icon buttons (the HUD gear) are flat: no bottom edge, no press-in. */
+button.icon-button,
+button.icon-button:active {
+  padding: 6px;
+  box-shadow: none;
+  transform: none;
 }
 
 button:focus-visible {

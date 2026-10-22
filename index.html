@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#1E2A44" />
+    <meta name="theme-color" content="#4A6BC8" />
     <meta
       name="description"
       content="Block Blowup: drag blocks, clear lines, beat your high score."
@@ -23,17 +23,20 @@
       <div id="stage"></div>
       <div id="safe-probe" aria-hidden="true"></div>
 
+      <!-- Spans the viewport top to the board (main.ts); the score is centred in it. -->
+      <div id="score-wrap" role="status" aria-label="Score">
+        <span id="score">0</span>
+      </div>
+
       <header id="hud">
-        <div class="hud-item">
-          <span class="hud-label">Score</span>
-          <span id="score">0</span>
+        <div class="hud-item" id="best-wrap" aria-label="Best">
+          <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5zM5 18h14v2H5z" />
+          </svg>
+          <span id="best">0</span>
         </div>
         <div class="hud-item combo" id="combo-wrap" hidden>
           <span id="combo">Combo ×1</span>
-        </div>
-        <div class="hud-item">
-          <span class="hud-label">Best</span>
-          <span id="best">0</span>
         </div>
         <button id="open-settings" class="icon-button" type="button" aria-label="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -49,7 +52,12 @@
       <section id="start" class="screen" aria-labelledby="start-title">
         <div class="screen-card">
           <h1 id="start-title" class="title">Block Blowup</h1>
-          <p class="best-line">Best <span id="start-best">0</span></p>
+          <p class="best-line" aria-label="Best">
+            <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5zM5 18h14v2H5z" />
+            </svg>
+            <span id="start-best">0</span>
+          </p>
           <button id="continue" type="button" hidden>Continue</button>
           <button id="play" type="button">Play</button>
           <button id="start-settings" class="secondary" type="button">Settings</button>
@@ -70,19 +78,28 @@
           <p id="haptics-note" class="note" hidden>This device can't vibrate.</p>
           <fieldset class="segmented">
             <legend>Reduce motion</legend>
-            <label><input type="radio" name="motion" value="system" /><span>System</span></label>
-            <label><input type="radio" name="motion" value="on" /><span>On</span></label>
-            <label><input type="radio" name="motion" value="off" /><span>Off</span></label>
+            <div class="segmented-track">
+              <label><input type="radio" name="motion" value="system" /><span>System</span></label>
+              <label><input type="radio" name="motion" value="on" /><span>On</span></label>
+              <label><input type="radio" name="motion" value="off" /><span>Off</span></label>
+            </div>
           </fieldset>
           <button id="settings-done" type="button">Done</button>
         </div>
       </section>
 
       <section id="overlay" class="screen" aria-labelledby="overlay-title" hidden>
-        <div class="screen-card">
+        <div class="screen-card over-card">
           <h2 id="overlay-title">Game Over</h2>
           <p id="new-best" class="new-best" hidden>New best!</p>
-          <p id="overlay-msg"></p>
+          <p class="over-label">Score</p>
+          <p id="over-score" class="over-score">0</p>
+          <p class="best-line" aria-label="Best">
+            <svg class="crown" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 9H5zM5 18h14v2H5z" />
+            </svg>
+            <span id="over-best">0</span>
+          </p>
           <button id="restart" type="button">Play again</button>
           <button id="to-menu" class="secondary" type="button">Menu</button>
         </div>

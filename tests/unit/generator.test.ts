@@ -46,6 +46,18 @@ describe('shapeWeights', () => {
     expect(familyShare(1, easy)).toBeLessThan(familyShare(0, easy));
   });
 
+  it('makes the 1×1 single rare early and never dealt at full difficulty', () => {
+    const single = SHAPES.findIndex((s) => s.family === 'single');
+    const share = (d: number) => {
+      const w = shapeWeights(d);
+      return w[single]! / w.reduce((a, b) => a + b, 0);
+    };
+    expect(share(0)).toBeGreaterThan(0);
+    expect(share(0)).toBeLessThan(0.05);
+    expect(share(0.5)).toBeLessThan(share(0));
+    expect(share(1)).toBe(0);
+  });
+
   it('shows up in the dealt pieces', () => {
     const count = (score: number) => {
       const g = new Generator(new Mulberry32(1).next);

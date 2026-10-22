@@ -59,6 +59,18 @@ describe('feedbackFor', () => {
     expect(shake(6)).toBe(FEEDBACK.shakeMax);
   });
 
+  it('every drop gets particles, fewer per cell than a line clear', () => {
+    const plain = feedbackFor(result(), motion);
+    expect(plain.dropParticlesPerCell).toBeGreaterThan(0);
+    expect(plain.dropParticlesPerCell).toBeLessThan(plain.particlesPerCell);
+    const clear = feedbackFor(result({ clearedCells: row7, lines: 1, combo: 1 }), motion);
+    expect(clear.dropParticlesPerCell).toBe(plain.dropParticlesPerCell);
+  });
+
+  it('reduced motion: no drop particles', () => {
+    expect(feedbackFor(result(), { reduceMotion: true }).dropParticlesPerCell).toBe(0);
+  });
+
   it('reduced motion: no shake and fewer particles', () => {
     const r = result({ clearedCells: row7, lines: 4, combo: 1 });
     expect(feedbackFor(r, { reduceMotion: true })).toMatchObject({

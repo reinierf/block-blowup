@@ -61,15 +61,17 @@ Every number below lives in `src/game/config.ts`.
   `DIFFICULTY_CURVE`: 0 → 0, 500 → 0.2, 1500 → 0.45, 3000 → 0.7, 6000+ → 1
   (`difficultyFor` in `src/game/difficulty.ts`).
 - **Weights per shape family** (`FAMILY_WEIGHTS`, easy → hard, linear in difficulty). A
-  family's weight is split equally between its orientations:
+  family's weight is split equally between its orientations. The 1×1 single is rare early
+  and never dealt at full difficulty:
 
-  | Family                         | Easy (d=0)  | Hard (d=1) |
-  | ------------------------------ | ----------- | ---------- |
-  | single, line2, square2, corner | 6, 6, 6, 6  | 2, 3, 4, 4 |
-  | line3                          | 5           | 4          |
-  | line4, L, T                    | 3, 2.5, 2.5 | 4, 4, 3.5  |
-  | line5, rect                    | 1.5, 1.5    | 4, 3.5     |
-  | square3, SZ, bigL              | 1, 1, 1     | 4, 3.5, 4  |
+  | Family                 | Easy (d=0)  | Hard (d=1) |
+  | ---------------------- | ----------- | ---------- |
+  | single                 | 1           | 0          |
+  | line2, square2, corner | 6, 6, 6     | 3, 4, 4    |
+  | line3                  | 5           | 4          |
+  | line4, L, T            | 3, 2.5, 2.5 | 4, 4, 3.5  |
+  | line5, rect            | 1.5, 1.5    | 4, 3.5     |
+  | square3, SZ, bigL      | 1, 1, 1     | 4, 3.5, 4  |
 
 - **No triples:** if the first two picks are the same shape, the third excludes it.
 - **Hard fairness rule:** a hand in which no piece fits anywhere is never dealt. The
@@ -197,26 +199,36 @@ that matters — if two of your three pieces still fit, you keep playing.
   once per colour and cell size. The canvas covers the whole viewport and renders at
   `devicePixelRatio`, capped at 2. Frames are only drawn when something changed (game
   state, drag, layout, running effects), and the loop pauses while the tab is hidden.
-- **Theme** (`src/render/theme.ts`; every colour lives there): close to the original but
-  subdued. Navy gradient background `#1E2A44` to `#18223A`, board panel `#141C30`, empty
-  cells `#212C47`, seven muted block colours (red `#D46A63`, orange `#DB8F5A`, yellow
-  `#D9BC62`, green `#72B77A`, cyan `#5DB3C4`, blue `#5F86D0`, purple `#9578C2`), text
-  `#E6EAF2` / `#9AA6BF`, accent `#F2C46D`. Blocks are bevelled squares (lighter top-left
-  edge, darker bottom-right, soft gloss), all at low contrast. The DOM HUD and overlays
+- **Theme** (`src/render/theme.ts`; every colour lives there): `VIVID`, close to the
+  original. Royal-blue background, a top-to-bottom gradient from `#4A6BC8` to `#8097D8`
+  (the same blue mixed with 30% white), board panel `#1C2754`, empty cells `#243163`,
+  seven saturated block colours (red `#EE4B45`, orange `#F5902E`,
+  yellow `#F8CB3A`, green `#5DCB48`, cyan `#3CC7EE`, blue `#3E72E6`, purple `#A05BDE`),
+  text `#FFFFFF` / `#C9D4F2`, accent (gold) `#FFC83D`. Blocks are bevelled squares (lighter
+  top-left edge, darker bottom-right, gloss on the upper half) with strong contrast. The
+  calmer `SUBDUED` theme from HANDOVER.md §3.5 is kept as an alternative. The DOM HUD and overlays
   read the same tokens through CSS custom properties.
 - **Piece colours:** each dealt hand gets three different colours, picked by the seeded
   RNG (`Generator`); placed cells keep their colour. The game layer only knows colour
   names; the theme maps names to colours.
 - **Layout** (`src/render/layout.ts`, portrait first): HUD (64 px) at the top of the safe
-  area; the board as wide as the column allows minus a 16 px gutter, shrinking if the
-  height requires; the tray of three equal slots below it, filling the rest of the screen
-  (thumb reach). Wider screens centre a column of at most 480 px. Safe-area insets come
+  area; 56 px of extra space below it for the score; the board as wide as the column
+  allows minus a 16 px gutter, shrinking if the height requires; the tray of three equal
+  slots below it, filling the rest of the screen (thumb reach). Pieces sit 40% closer to
+  the board than the slot centre (`trayPull`), never so close that a 5-cell piece leaves
+  its slot. Tray blocks are sized per hand (`trayCellFor`): up to 0.65 of a board cell
+  (`trayScaleMax`), shrunk together until the hand's largest piece fits its slot, never
+  below 0.5 (`trayScale`, the size the layout reserves room for). The size is fixed when
+  the hand is dealt, so the remaining pieces don't grow after one is placed. Wider screens centre a column of at most 480 px. Safe-area insets come
   from `env(safe-area-inset-*)` (`viewport-fit=cover`). Zooming is not disabled; gestures
   on the game area are (`touch-action: none`, no overscroll, no selection, no long-press
   menu).
-- **HUD:** score (counts up to the new value in about 0.4 s), a combo badge (from combo
-  2), best score, and a mute button. Fixed grid columns, so nothing shifts when the badge
-  appears.
+- **Score:** large (62 px, Nunito Bold, bundled in `public/fonts/` for offline use), centred horizontally on the board and vertically 0.8 × its
+  font size below the midpoint between the viewport top and the board; counts up to the
+  new value in about 0.4 s.
+- **HUD:** best score at the top left (31 px Nunito Bold with the score's shadow, a gold crown, no label), a combo badge (from
+  combo 2) in the middle, and a settings gear (38 px) at the top right. Fixed grid columns, so
+  nothing shifts when the badge appears.
 
 ## 8a. Feedback
 
@@ -225,7 +237,18 @@ Every effect is driven by the turn result. `feedbackFor(result, { reduceMotion }
 manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts) and
 `AUDIO` (audio.ts).
 
-- **Clear:** cleared cells flash and shrink, particles burst in the cells' colours
+- **Deal:** each newly dealt tray piece pops in (scale 0 to a slight overshoot to 1 in
+  0.3 s, the slots 0.07 s apart) with a small white puff behind it, spawned on the piece's
+  centre line like the drop particles (`DEAL_POP` in the renderer). Not with
+  `?test=1`, which freezes effects.
+- **Drop:** every placement puffs particles from the placed cells (2.8 per cell, rounded
+  over the piece; none with reduced motion): slower and shorter-lived than a clear's
+  burst. Drop and clear particles spawn anywhere on the **centre line** of the cells (the
+  polygon through the centres of the outer cells; a segment for a line or a cleared row)
+  and fly away from it, within ±36° of the outward normal (`src/feedback/particles.ts`);
+  a lone cell bursts from its centre. All particles are multicoloured (each a random
+  block colour), have no gravity, slow down and fade out.
+- **Clear:** cleared cells flash and shrink, particles burst
   (3 per cell, 1 with reduced motion). A popup rises from the **centre of the cleared
   cells** (kept inside the board): the praise word ("Good" / "Great" / "Excellent" /
   "Amazing" for 2 / 3 / 4 / 5+ lines, from the turn result), `+points`, and "Combo ×N" from
@@ -262,7 +285,13 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
   note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
   and save immediately.
 - **Game over:** after the grey-out sequence, the score screen shows "New best!" when it
-  applies, the score and best, **Play again** and **Menu**.
+  applies, the score (large, Nunito with the HUD's shadow) and the best (with the crown),
+  **Play again** and **Menu**.
+- **Look of all screens:** the game stays visible behind them, blurred (10 px, no dark
+  scrim). Cards use the board's panel colour with rounded corners and a faint rim;
+  headings, numbers and buttons are Nunito Bold, headings with the HUD's shadow; the best
+  score shows with the crown. Buttons are chunky, with a darker bottom edge that presses
+  in on tap. The update toast uses the same panel and buttons.
 - **Update prompt:** when a new version has been downloaded, a small "Update available"
   toast with **Reload** appears; the app never reloads by itself mid-game.
 - **Debug overlay:** `?debug` shows the seed, difficulty and the last deal's generator
@@ -285,7 +314,7 @@ missing, blocked or corrupt data falls back to "nothing saved".
 ## 9a. PWA
 
 - `vite-plugin-pwa` (prompt mode): web manifest (name "Block Blowup", short name
-  "Blowup", standalone, portrait, theme `#1E2A44`, background `#18223A`, 192/512 icons
+  "Blowup", standalone, portrait, theme `#4A6BC8`, background `#8097D8`, 192/512 icons
   as both `any` and `maskable`), Apple touch icon and iOS standalone meta tags.
 - The service worker precaches everything (HTML, JS including the renderer chunk, CSS,
   icons), so the game runs fully offline after the first visit.
