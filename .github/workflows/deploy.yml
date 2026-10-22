@@ -1,0 +1,43 @@
+name: Deploy (manual)
+
+# Build and deploy main to GitHub Pages without the e2e and Lighthouse jobs. Run by hand
+# (Actions tab, or `npm run deploy`) when a change must go live before CI is
+# green. Pushes still go through the full CI pipeline in ci.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and deploy to GitHub Pages
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Shared with the deploy job in ci.yml, so the two never deploy at once.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Production build has no test hook
+        run: npm run check:prod
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v5

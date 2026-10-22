@@ -20,7 +20,8 @@
     "sim:update": "tsx scripts/simulate.ts --update",
     "check:prod": "tsx scripts/check-prod-build.ts",
     "icons": "tsx scripts/make-icons.ts",
-    "lighthouse": "lhci autorun"
+    "lighthouse": "lhci autorun",
+    "deploy": "gh workflow run deploy.yml --ref main"
   },
   "engines": {
     "node": ">=22"

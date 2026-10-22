@@ -13,7 +13,8 @@ For **personal use only**. Forked from the MIT-licensed
   from Phase 4; `vite-plugin-pwa` from Phase 7. No UI frameworks, no game engines.
 - **Repo:** <https://github.com/reinierf/block-blowup> (a GitHub fork of SSWheatley/block_blast,
   renamed from `block-blast`). Live at <https://reinierf.github.io/block-blowup/>.
-- **Deploys** to GitHub Pages from `main`, only when every CI job is green. Vite's `base`
+- **Deploys** to GitHub Pages from `main`, only when every CI job is green; to skip e2e and
+  Lighthouse in a pinch, run `npm run deploy` (build + deploy only). Vite's `base`
   is `/block-blowup/` for builds and `vite preview` (`PAGES_BASE` in `vite.config.ts`; keep
   it equal to the repo name, as are the URLs in `lighthouserc.json` and the `pwa` project).
 
@@ -35,6 +36,7 @@ npm run lighthouse   # Lighthouse CI on `vite preview` (build first; needs Chrom
 npm run icons        # regenerate public/icons from scripts/make-icons.ts
 npm run sim          # simulation stats for seeds 1..300 (-- --from A --to B)
 npm run sim:update   # rewrite tests/sim-snapshot.json after an intended balance change
+npm run deploy       # trigger the manual Pages deploy (build only, no e2e/Lighthouse; uses gh)
 ```
 
 First Playwright run on a new machine: `npx playwright install chromium webkit`.
@@ -76,44 +78,45 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 ## Layout
 
-| Path                          | Responsibility                                      |
-| ----------------------------- | --------------------------------------------------- |
-| `index.html`, `style.css`     | Page shell, theme, HUD, game-over overlay           |
-| `src/main.ts`                 | Bootstrap, game loop, wiring, HUD/overlay, effects  |
-| `src/input.ts`                | Pointer-based drag & drop (mouse + touch, one path) |
-| `src/storage.ts`              | High-score persistence (`localStorage`)             |
-| `src/game/pieces.ts`          | Shape set (with families), palette                  |
-| `src/game/config.ts`          | Every tunable gameplay number                       |
-| `src/game/rng.ts`             | Seeded RNG (mulberry32)                             |
-| `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy rule         |
-| `src/game/solver.ts`          | Whole-hand solvability search                       |
-| `src/game/bitboard.ts`        | Packed boards for fast search                       |
-| `src/game/difficulty.ts`      | Difficulty curve                                    |
-| `src/game/board.ts`           | 8×8 grid, placement validation, line clearing       |
-| `src/game/scoring.ts`         | Scoring formulas                                    |
-| `src/game/state.ts`           | Game state machine, hand management                 |
-| `src/sim/`                    | Seeded LCG, greedy bot, simulation runner, snapshot |
-| `src/render/layout.ts`        | Viewport geometry (shared by renderer + input)      |
-| `src/render/renderer.ts`      | Renderer interface                                  |
-| `src/render/pixi-renderer.ts` | PixiJS renderer                                     |
-| `src/render/theme.ts`         | Every colour (tokens)                               |
-| `src/input-logic.ts`          | Pure drag geometry (snapping, drop tolerance)       |
-| `src/test-hook.ts`            | `?seed&test=1` hook (dev/test builds only)          |
-| `src/feedback/plan.ts`        | Turn result → feedback plan (pure)                  |
-| `src/feedback/particles.ts`   | Particle spawn points and directions (pure)         |
-| `src/feedback/game-over.ts`   | Game-over sequence timeline (pure)                  |
-| `src/game/save.ts`            | Save / validate / restore a game in progress        |
-| `src/pwa.ts`                  | Service worker registration, update prompt          |
-| `src/audio.ts`                | Synthesised Web Audio sound effects                 |
-| `src/haptics.ts`              | Feature-detected vibration                          |
-| `src/settings.ts`             | Mute / haptics / reduced-motion settings            |
-| `src/fullscreen.ts`           | Fullscreen toggle (browser tabs only)               |
-| `tests/`                      | Vitest + Playwright suites (see above)              |
-| `.github/workflows/ci.yml`    | CI pipeline + Pages deploy                          |
-| `.github/workflows/perf.yml`  | Weekly performance job (also runnable by hand)      |
-| `docs/plan.md`                | Roadmap and phase progress                          |
-| `docs/game-design.md`         | How the game works (rules, scoring, systems)        |
-| `HANDOVER.md`                 | Research, specs and the phased plan                 |
+| Path                           | Responsibility                                      |
+| ------------------------------ | --------------------------------------------------- |
+| `index.html`, `style.css`      | Page shell, theme, HUD, game-over overlay           |
+| `src/main.ts`                  | Bootstrap, game loop, wiring, HUD/overlay, effects  |
+| `src/input.ts`                 | Pointer-based drag & drop (mouse + touch, one path) |
+| `src/storage.ts`               | High-score persistence (`localStorage`)             |
+| `src/game/pieces.ts`           | Shape set (with families), palette                  |
+| `src/game/config.ts`           | Every tunable gameplay number                       |
+| `src/game/rng.ts`              | Seeded RNG (mulberry32)                             |
+| `src/game/generator.ts`        | Hand dealing: weights, fairness, mercy rule         |
+| `src/game/solver.ts`           | Whole-hand solvability search                       |
+| `src/game/bitboard.ts`         | Packed boards for fast search                       |
+| `src/game/difficulty.ts`       | Difficulty curve                                    |
+| `src/game/board.ts`            | 8×8 grid, placement validation, line clearing       |
+| `src/game/scoring.ts`          | Scoring formulas                                    |
+| `src/game/state.ts`            | Game state machine, hand management                 |
+| `src/sim/`                     | Seeded LCG, greedy bot, simulation runner, snapshot |
+| `src/render/layout.ts`         | Viewport geometry (shared by renderer + input)      |
+| `src/render/renderer.ts`       | Renderer interface                                  |
+| `src/render/pixi-renderer.ts`  | PixiJS renderer                                     |
+| `src/render/theme.ts`          | Every colour (tokens)                               |
+| `src/input-logic.ts`           | Pure drag geometry (snapping, drop tolerance)       |
+| `src/test-hook.ts`             | `?seed&test=1` hook (dev/test builds only)          |
+| `src/feedback/plan.ts`         | Turn result → feedback plan (pure)                  |
+| `src/feedback/particles.ts`    | Particle spawn points and directions (pure)         |
+| `src/feedback/game-over.ts`    | Game-over sequence timeline (pure)                  |
+| `src/game/save.ts`             | Save / validate / restore a game in progress        |
+| `src/pwa.ts`                   | Service worker registration, update prompt          |
+| `src/audio.ts`                 | Synthesised Web Audio sound effects                 |
+| `src/haptics.ts`               | Feature-detected vibration                          |
+| `src/settings.ts`              | Mute / haptics / reduced-motion settings            |
+| `src/fullscreen.ts`            | Fullscreen toggle (browser tabs only)               |
+| `tests/`                       | Vitest + Playwright suites (see above)              |
+| `.github/workflows/ci.yml`     | CI pipeline + Pages deploy                          |
+| `.github/workflows/perf.yml`   | Weekly performance job (also runnable by hand)      |
+| `.github/workflows/deploy.yml` | Manual deploy: build and publish, no e2e/Lighthouse |
+| `docs/plan.md`                 | Roadmap and phase progress                          |
+| `docs/game-design.md`          | How the game works (rules, scoring, systems)        |
+| `HANDOVER.md`                  | Research, specs and the phased plan                 |
 
 ## Environment notes (this machine)
 
