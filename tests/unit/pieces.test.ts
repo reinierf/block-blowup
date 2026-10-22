@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FAMILY_WEIGHTS } from '../../src/game/config';
-import { PALETTE, SHAPES, colorFor } from '../../src/game/pieces';
+import { SHAPES } from '../../src/game/pieces';
 
 describe('SHAPES', () => {
   it('has the 33 shapes of the fork, with sequential ids and unique names', () => {
@@ -51,13 +51,5 @@ describe('SHAPES', () => {
     expect(Object.isFrozen(SHAPES)).toBe(true);
     expect(Object.isFrozen(SHAPES[0])).toBe(true);
     expect(Object.isFrozen(SHAPES[0]!.cells)).toBe(true);
-  });
-});
-
-describe('colorFor', () => {
-  it('maps shape id onto the palette, wrapping around', () => {
-    expect(colorFor(SHAPES[0]!)).toBe(PALETTE[0]);
-    expect(colorFor(SHAPES[16]!)).toBe(PALETTE[0]);
-    expect(colorFor(SHAPES[17]!)).toBe(PALETTE[1]);
   });
 });

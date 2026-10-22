@@ -17,7 +17,10 @@
     "format": "prettier --write .",
     "sim": "tsx scripts/simulate.ts",
     "e2e": "playwright test",
-    "sim:update": "tsx scripts/simulate.ts --update"
+    "sim:update": "tsx scripts/simulate.ts --update",
+    "check:prod": "tsx scripts/check-prod-build.ts",
+    "e2e:visual": "node scripts/docker-playwright.mjs --project=visual",
+    "e2e:visual:update": "node scripts/docker-playwright.mjs --project=visual --update-snapshots"
   },
   "engines": {
     "node": ">=22"
@@ -38,5 +41,9 @@
     "typescript-eslint": "^8.72.0",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
+  },
+  "dependencies": {
+    "pixi-filters": "^6.1.5",
+    "pixi.js": "^8.22.0"
   }
 }

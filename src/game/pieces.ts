@@ -94,30 +94,12 @@ const SHAPE_DEFS: ShapeDef[] = [
   { name: 'bigL-4', family: 'bigL', pattern: ['XXX', '..X', '..X'] },
 ];
 
-/** Vibrant block palette; shapes map to a stable color by id. */
-export const PALETTE: readonly string[] = [
-  '#ef4444',
-  '#f97316',
-  '#f59e0b',
-  '#eab308',
-  '#84cc16',
-  '#22c55e',
-  '#10b981',
-  '#14b8a6',
-  '#06b6d4',
-  '#3b82f6',
-  '#6366f1',
-  '#8b5cf6',
-  '#a855f7',
-  '#d946ef',
-  '#ec4899',
-  '#f43f5e',
-];
-
-/** The color used for a given shape. */
-export function colorFor(shape: Shape): string {
-  return PALETTE[shape.id % PALETTE.length]!;
-}
+/**
+ * Piece colour names. The game only deals in names; the theme (src/render/theme.ts) maps
+ * each name to an actual colour.
+ */
+export const PIECE_COLORS = ['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple'] as const;
+export type PieceColor = (typeof PIECE_COLORS)[number];
 
 /** Compile the ASCII definitions into shape objects. */
 export const SHAPES: readonly Shape[] = Object.freeze(

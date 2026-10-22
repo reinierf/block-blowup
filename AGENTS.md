@@ -28,6 +28,9 @@ npm run coverage     # Vitest with coverage for src/game/
 npm run typecheck
 npm run lint         # ESLint + Prettier check (npm run format to fix)
 npm run e2e          # Playwright: Pixel 7, iPhone 14 (WebKit), desktop Chromium
+npm run e2e:visual   # visual baselines, in the pinned Linux Playwright image (needs Docker)
+npm run e2e:visual:update  # re-render baselines on purpose (commit them with the change)
+npm run check:prod   # after a build: the test hook must not be in dist/
 npm run sim          # simulation stats for seeds 1..300 (-- --from A --to B)
 npm run sim:update   # rewrite tests/sim-snapshot.json after an intended balance change
 ```
@@ -44,7 +47,13 @@ First Playwright run on a new machine: `npx playwright install chromium webkit`.
 | End-to-end / visual / PWA | `tests/e2e/**/*.spec.ts`    | Playwright        |
 
 E2E tests import `test`/`expect` from `tests/e2e/fixtures.ts`, which fails any test that
-logs a console error or throws.
+logs a console error or throws. They drive the game through `?seed=N&test=1`, which
+exposes a read-only `window.__blowup` (snapshot, layout, frame costs) and freezes effects;
+helpers are in `tests/e2e/helpers.ts`. Playwright runs with one worker: every browser
+renders WebGL in software, and parallel browsers starve each other.
+
+Visual baselines (`tests/visual/__screenshots__`) are rendered only on Linux in the pinned
+image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`).
 
 ## Conventions — please follow
 
@@ -79,7 +88,11 @@ logs a console error or throws.
 | `src/game/state.ts`             | Game state machine, hand management                 |
 | `src/sim/`                      | Seeded LCG, greedy bot, simulation runner, snapshot |
 | `src/render/layout.ts`          | Viewport geometry (shared by renderer + input)      |
-| `src/render/renderer.ts`        | Canvas 2D drawing (replaced by PixiJS in Phase 4)   |
+| `src/render/renderer.ts`        | Renderer interface                                  |
+| `src/render/pixi-renderer.ts`   | PixiJS renderer                                     |
+| `src/render/theme.ts`           | Every colour (tokens)                               |
+| `src/input-logic.ts`            | Pure drag geometry (snapping, drop tolerance)       |
+| `src/test-hook.ts`              | `?seed&test=1` hook (dev/test builds only)          |
 | `tests/`                        | Vitest + Playwright suites (see above)              |
 | `.github/workflows/ci.yml`      | CI pipeline + Pages deploy                          |
 | `.github/workflows/nightly.yml` | Nightly performance job                             |
@@ -91,3 +104,6 @@ logs a console error or throws.
 
 - Windows 11; Node 22. `origin` → `git@github.com:reinierf/block-blast.git`, branch `main`.
 - `gh` is authenticated as `reinierf`.
+- AVG Antivirus intercepts TLS; Node trusts it via `NODE_EXTRA_CA_CERTS`, and
+  `scripts/docker-playwright.mjs` passes that certificate into the container.
+- Docker Desktop must be running for `npm run e2e:visual`.

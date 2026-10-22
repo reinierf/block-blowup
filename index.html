@@ -2,11 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#0a0d16" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1E2A44" />
     <meta
       name="description"
       content="Block Blowup: drag blocks, clear lines, beat your high score."
@@ -15,29 +12,28 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div id="app">
-      <header id="hud">
-        <div class="hud-item">
-          <span class="hud-label">Score</span>
-          <span id="score">0</span>
-        </div>
-        <div class="hud-item combo" id="combo-wrap" hidden>
-          <span id="combo">Combo x1</span>
-        </div>
-        <div class="hud-item">
-          <span class="hud-label">Best</span>
-          <span id="best">0</span>
-        </div>
-      </header>
+    <div id="stage"></div>
+    <div id="safe-probe" aria-hidden="true"></div>
 
-      <canvas id="game"></canvas>
+    <header id="hud">
+      <div class="hud-item">
+        <span class="hud-label">Score</span>
+        <span id="score">0</span>
+      </div>
+      <div class="hud-item combo" id="combo-wrap" hidden>
+        <span id="combo">Combo ×1</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Best</span>
+        <span id="best">0</span>
+      </div>
+    </header>
 
-      <div id="overlay" class="overlay hidden">
-        <div class="overlay-card">
-          <h1 id="overlay-title">Game Over</h1>
-          <p id="overlay-msg"></p>
-          <button id="restart" type="button">Play again</button>
-        </div>
+    <div id="overlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <h1 id="overlay-title">Game Over</h1>
+        <p id="overlay-msg"></p>
+        <button id="restart" type="button">Play again</button>
       </div>
     </div>
 

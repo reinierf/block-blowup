@@ -9,7 +9,7 @@ This file tracks progress against those phases and records decisions made along 
 - [x] **Phase 1 — Characterisation tests and simulation harness** (2026-10-22)
 - [x] **Phase 2 — Rules (config module, combo grace, board-clear bonus)** (2026-10-22)
 - [x] **Phase 3 — Generator (weighted, fair, mercy rule)** (2026-10-22)
-- [ ] Phase 4 — PixiJS renderer, mobile layout, theme
+- [x] **Phase 4 — PixiJS renderer, mobile layout, theme** (2026-10-22; real-phone check pending)
 - [ ] Phase 5 — Input and preview
 - [ ] Phase 6 — Feedback, audio, haptics
 - [ ] Phase 7 — PWA and screens
@@ -105,9 +105,32 @@ This file tracks progress against those phases and records decisions made along 
 - Possible follow-up: games now last ~3× longer under the bot; whether that's too easy for
   a human is a feel question for playtesting once the new renderer is in.
 
-## Known issues (inherited from the fork)
+## Phase 4 notes
 
-- The "Combo x1" HUD badge is always visible: `.hud-item { display: flex }` overrides the
-  `hidden` attribute on `#combo-wrap`. Fix with a failing e2e test first (Phase 6 HUD work,
-  or earlier).
-- The viewport meta still has `maximum-scale=1, user-scalable=no` (removed in Phase 4).
+- PixiJS 8.22 renderer behind `Renderer` (created by `createPixiRenderer`, then `resize`,
+  `frame`, `playEffects`, `clearEffects`); the Canvas 2D renderer is deleted. Mobile-first
+  layout and the subdued theme as specified; see `docs/game-design.md` sections 7 and 8.
+- Hand colours are now dealt by the generator (three distinct colours per hand), which
+  consumes RNG values: every seed deals a different sequence, so the sim snapshot and the
+  seed-1 pin were regenerated. Aggregates barely moved (seeds 1..300: 97.4 to 92.9 moves,
+  0 dead fresh hands, same difficulty curve): reseeding noise, not a balance change.
+- Drop tolerance (half a cell) is in already, because the Phase 4 e2e test needs it.
+  Phase 5 builds on `src/input-logic.ts`.
+- Fixed the inherited "Combo x1 always visible" bug (`[hidden]` was overridden by
+  `display: flex`); the e2e test was confirmed failing without the fix.
+- Tests: layout geometry for 360×640, 390×844, 412×915, 768×1024, 844×390 landscape and
+  desktop; input logic; e2e drag-and-place, drop outside tolerance, drop on occupied
+  cells, hook read-only, viewport meta; `npm run check:prod` proves the hook is absent from
+  production builds (and flags a `--mode test` build). Visual baselines: new game and
+  mid-game board (there is no start screen until Phase 7).
+- Nightly perf job: CI has no GPU, so headless Chromium rasterises WebGL in software at
+  about 50 ms per frame even when idle, which says nothing about a phone. The job instead
+  measures main-thread cost per drawn frame under 4× CPU throttle (local: p50 1.0 ms,
+  p95 3.4 ms) and fails above 20 ms p95.
+- **Still to do by hand:** check on a real phone: 60 fps while dragging, crisp at high
+  DPR, no gesture conflicts (pull-to-refresh, zoom, long-press). `npm run dev` serves on
+  the LAN.
+
+## Known issues
+
+- None open.

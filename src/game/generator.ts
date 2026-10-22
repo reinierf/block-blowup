@@ -21,7 +21,7 @@ import {
   SOLVER_NODE_BUDGET,
 } from './config';
 import { difficultyFor, pSolvable } from './difficulty';
-import { SHAPES, type Shape } from './pieces';
+import { PIECE_COLORS, SHAPES, type PieceColor, type Shape } from './pieces';
 import { weightedIndex, type Rng } from './rng';
 import { canPlaceAll } from './solver';
 
@@ -54,6 +54,8 @@ export interface DealInfo {
 
 export interface Deal {
   shapes: Shape[];
+  /** One colour per piece, all different. */
+  colors: PieceColor[];
   info: DealInfo;
 }
 
@@ -111,6 +113,7 @@ export class Generator {
       fallback: DealInfo['fallback'],
     ): Deal => ({
       shapes,
+      colors: this.drawColors(shapes.length),
       info: {
         difficulty,
         redraws,
@@ -151,6 +154,16 @@ export class Generator {
     // Every hand was dead: swap the smallest piece that fits into the first slot.
     const smallest = this.smallestFirst.find((s) => fitsAnywhere(rows, s));
     return done(smallest ? [smallest, ...last.slice(1)] : last, null, 'swappedSmallest');
+  }
+
+  /** `n` distinct piece colours, in random order (partial Fisher–Yates). */
+  private drawColors(n: number): PieceColor[] {
+    const pool = [...PIECE_COLORS];
+    for (let i = 0; i < n; i++) {
+      const j = i + Math.floor(this.rng() * (pool.length - i));
+      [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+    }
+    return pool.slice(0, n);
   }
 
   /** Draw HAND_SIZE shapes by weight, never three identical. */

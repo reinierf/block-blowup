@@ -19,9 +19,9 @@ describe('determinism', () => {
     const g = playGame(1);
     expect({ moves: g.moves, score: g.score, bestCombo: g.bestCombo }).toMatchInlineSnapshot(`
       {
-        "bestCombo": 7,
-        "moves": 131,
-        "score": 1402,
+        "bestCombo": 10,
+        "moves": 80,
+        "score": 899,
       }
     `);
   });

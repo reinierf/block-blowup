@@ -7,6 +7,8 @@ const PAGES_BASE = '/block-blast/';
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? PAGES_BASE : '/',
   server: { host: true, port: 5173 },
+  // Pre-bundle Pixi at startup so the first page load isn't interrupted by a dep re-optimise.
+  optimizeDeps: { include: ['pixi.js'] },
   preview: { host: true, port: 4173 },
   build: { target: 'es2022' },
   test: {

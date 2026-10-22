@@ -5,7 +5,7 @@
 import { Board } from './board';
 import { rowsFromBoard } from './bitboard';
 import { Generator, type DealInfo } from './generator';
-import { colorFor, type Shape } from './pieces';
+import type { Shape } from './pieces';
 import type { Rng } from './rng';
 import { COMBO_GRACE } from './config';
 import { allClearPoints, lineClearPoints, placementPoints, praiseFor } from './scoring';
@@ -19,6 +19,7 @@ export type GameStatus = (typeof GameStatus)[keyof typeof GameStatus];
 export interface HandPiece {
   uid: number;
   shape: Shape;
+  /** A PieceColor name; placed cells keep it. */
   color: string;
 }
 
@@ -101,11 +102,11 @@ export class Game {
 
   /** Deal a fresh hand of three from the generator. */
   dealHand(): DealInfo {
-    const { shapes, info } = this.generator.deal(rowsFromBoard(this.board), {
+    const { shapes, colors, info } = this.generator.deal(rowsFromBoard(this.board), {
       score: this.score,
       handsWithoutClear: this.handsWithoutClear,
     });
-    this.hand = shapes.map((shape) => ({ uid: ++uidCounter, shape, color: colorFor(shape) }));
+    this.hand = shapes.map((shape, i) => ({ uid: ++uidCounter, shape, color: colors[i]! }));
     this.lastDeal = info;
     return info;
   }

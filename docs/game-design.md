@@ -168,25 +168,47 @@ that matters — if two of your three pieces still fit, you keep playing.
 
 ## 7. Controls
 
-- **Drag and drop** a piece from the hand onto the board using Pointer Events, so mouse,
-  touch, and pen all use one code path (`src/input.ts`).
-- While dragging, a **ghost preview** shows where the piece would land:
-  - **Green** = valid placement.
-  - **Red** = blocked / out of bounds.
-- The target cell snaps to the nearest grid cell of the piece's top-left, clamped to the
-  board so near-edge drops still land.
-- On release: a valid drop places the piece; an invalid drop returns it to the hand.
-- On touch, the piece floats slightly above the finger so it isn't hidden.
+- **Drag and drop** a piece from the tray onto the board using Pointer Events, so mouse,
+  touch, and pen all use one code path (`src/input.ts`). Only one pointer is tracked at a
+  time; extra touches are ignored. The whole tray slot is the hit area (at least 44×44 px).
+- The dragged piece is drawn at board size. With the mouse it is centred on the pointer;
+  on touch it floats `INPUT.touchLiftCells` (0.6) cells above the finger.
+- **Snapping** (`dropTarget` in `src/input-logic.ts`): the piece's top-left snaps to the
+  nearest cell when the piece is over the board or overhangs it by at most half a cell
+  (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and
+  releasing returns the piece to the tray.
+- While there is a target, a **ghost** shows where the piece would land: the piece's own
+  block colour, faded, when legal; a faded red when blocked.
+- On release: a legal drop places the piece; anything else returns it to the tray.
 
-## 8. Visual & feedback (polish)
+## 8. Visuals and layout
 
-- Dark, modern theme with rounded, lightly-glossy blocks (gradient + top highlight).
-- **Line clear**: cleared cells flash white and shrink out.
-- **Particles**: small colored squares burst from cleared cells (colored to match).
-- **Score popup**: `+points` floats up from the board center, with a `Combo xN` line when
-  a combo is active.
-- **HUD**: current score, an active combo badge, and best score.
-- **Game-over overlay**: final score, best score, and a "Play again" button.
+- **Renderer:** PixiJS v8 (WebGL; WebGPU where available) behind the `Renderer` interface
+  (`src/render/renderer.ts`, implementation `pixi-renderer.ts`). Block textures are baked
+  once per colour and cell size. The canvas covers the whole viewport and renders at
+  `devicePixelRatio`, capped at 2. Frames are only drawn when something changed (game
+  state, drag, layout, running effects), and the loop pauses while the tab is hidden.
+- **Theme** (`src/render/theme.ts`; every colour lives there): close to the original but
+  subdued. Navy gradient background `#1E2A44` to `#18223A`, board panel `#141C30`, empty
+  cells `#212C47`, seven muted block colours (red `#D46A63`, orange `#DB8F5A`, yellow
+  `#D9BC62`, green `#72B77A`, cyan `#5DB3C4`, blue `#5F86D0`, purple `#9578C2`), text
+  `#E6EAF2` / `#9AA6BF`, accent `#F2C46D`. Blocks are bevelled squares (lighter top-left
+  edge, darker bottom-right, soft gloss), all at low contrast. The DOM HUD and overlays
+  read the same tokens through CSS custom properties.
+- **Piece colours:** each dealt hand gets three different colours, picked by the seeded
+  RNG (`Generator`); placed cells keep their colour. The game layer only knows colour
+  names; the theme maps names to colours.
+- **Layout** (`src/render/layout.ts`, portrait first): HUD (64 px) at the top of the safe
+  area; the board as wide as the column allows minus a 16 px gutter, shrinking if the
+  height requires; the tray of three equal slots below it, filling the rest of the screen
+  (thumb reach). Wider screens centre a column of at most 480 px. Safe-area insets come
+  from `env(safe-area-inset-*)` (`viewport-fit=cover`). Zooming is not disabled; gestures
+  on the game area are (`touch-action: none`, no overscroll, no selection, no long-press
+  menu).
+- **Effects** (unchanged from the fork for now): cleared cells flash and shrink, particles
+  burst in the cells' colours, and `+points` floats up from the board centre.
+- **HUD:** score, a combo badge (shown from combo 2), and best score. **Game-over
+  overlay:** final score, best score and "Play again".
 
 ## 9. Persistence
 
@@ -195,23 +217,27 @@ that matters — if two of your three pieces still fit, you keep playing.
 
 ## 10. Code map
 
-| File                     | Responsibility                                              |
-| ------------------------ | ----------------------------------------------------------- |
-| `src/main.ts`            | Bootstrap, game loop, wiring, effects spawning, HUD/overlay |
-| `src/game/pieces.ts`     | Shape set (with families), palette                          |
-| `src/game/config.ts`     | Every tunable gameplay number                               |
-| `src/game/rng.ts`        | Seeded RNG (mulberry32), weighted picks                     |
-| `src/game/difficulty.ts` | Difficulty from score, P(solvable)                          |
-| `src/game/generator.ts`  | Hand dealing: weights, fairness, mercy                      |
-| `src/game/solver.ts`     | Can a whole hand be placed? (bounded DFS)                   |
-| `src/game/bitboard.ts`   | Packed board representation for search                      |
-| `src/game/board.ts`      | 8×8 grid, collision/placement, line detection & clearing    |
-| `src/game/scoring.ts`    | Placement points, line-clear points, combo multiplier       |
-| `src/game/state.ts`      | Game state machine, hand management, turn resolution        |
-| `src/render/layout.ts`   | Geometry (board + hand) for a given viewport size           |
-| `src/render/renderer.ts` | All canvas drawing (board, hand, ghost, effects)            |
-| `src/input.ts`           | Pointer-based drag & drop                                   |
-| `src/storage.ts`         | High-score persistence                                      |
+| File                          | Responsibility                                             |
+| ----------------------------- | ---------------------------------------------------------- |
+| `src/main.ts`                 | Bootstrap, frame loop, wiring, HUD/overlay                 |
+| `src/game/pieces.ts`          | Shape set (with families), piece colour names              |
+| `src/game/config.ts`          | Every tunable gameplay number                              |
+| `src/game/rng.ts`             | Seeded RNG (mulberry32), weighted picks                    |
+| `src/game/difficulty.ts`      | Difficulty from score, P(solvable)                         |
+| `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy                     |
+| `src/game/solver.ts`          | Can a whole hand be placed? (bounded DFS)                  |
+| `src/game/bitboard.ts`        | Packed board representation for search                     |
+| `src/game/board.ts`           | 8×8 grid, collision/placement, line detection & clearing   |
+| `src/game/scoring.ts`         | Placement points, line-clear points, combo multiplier      |
+| `src/game/state.ts`           | Game state machine, hand management, turn resolution       |
+| `src/render/layout.ts`        | Mobile-first geometry (HUD, board, tray, safe area)        |
+| `src/render/renderer.ts`      | Renderer interface                                         |
+| `src/render/pixi-renderer.ts` | PixiJS renderer: board, tray, drag, ghost, effects         |
+| `src/render/theme.ts`         | Colour tokens                                              |
+| `src/input-logic.ts`          | Pure drag geometry: piece origin, snapping, drop tolerance |
+| `src/test-hook.ts`            | `?seed&test=1` hook for Playwright (dev/test builds only)  |
+| `src/input.ts`                | Pointer-based drag & drop                                  |
+| `src/storage.ts`              | High-score persistence                                     |
 
 ### Design rule
 

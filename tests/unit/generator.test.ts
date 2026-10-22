@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { completesALine, fitsAnywhere, rowsFromBoard } from '../../src/game/bitboard';
 import { DEAL_NODE_BUDGET, FAMILY_WEIGHTS, MAX_REDRAWS, MERCY_BOOST } from '../../src/game/config';
 import { Generator, shapeWeights } from '../../src/game/generator';
-import { SHAPES, type ShapeFamily } from '../../src/game/pieces';
+import { PIECE_COLORS, SHAPES, type ShapeFamily } from '../../src/game/pieces';
 import { Mulberry32 } from '../../src/game/rng';
 import { canPlaceAll } from '../../src/game/solver';
 import { boardFrom, shape } from '../helpers/boards';
@@ -123,6 +123,23 @@ describe('Generator.deal', () => {
     expect(
       deals.filter((d) => !d.info.requireSolvable).every((d) => d.info.solvable === null),
     ).toBe(true);
+  });
+
+  it('gives the three pieces three different colours from the palette (property)', () => {
+    fc.assert(
+      fc.property(fc.nat(2 ** 31), (seed) => {
+        const { colors } = new Generator(new Mulberry32(seed).next).deal(EMPTY, ctx);
+        expect(colors).toHaveLength(3);
+        expect(new Set(colors).size).toBe(3);
+        for (const c of colors) expect(PIECE_COLORS).toContain(c);
+      }),
+    );
+  });
+
+  it('uses every colour over time', () => {
+    const g = new Generator(new Mulberry32(4).next);
+    const seen = new Set(Array.from({ length: 30 }, () => g.deal(EMPTY, ctx).colors).flat());
+    expect(seen.size).toBe(PIECE_COLORS.length);
   });
 
   it('is deterministic per seed', () => {

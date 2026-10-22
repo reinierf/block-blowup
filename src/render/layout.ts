@@ -1,54 +1,120 @@
 // src/render/layout.ts
-// Computes board + hand geometry for a given viewport (in CSS pixels).
-// Shared by the renderer and the input layer so they always agree on hit-testing.
+// Mobile-first geometry for a viewport (CSS px), shared by the renderer, the input layer
+// and the DOM HUD so they always agree. Portrait phone first: HUD on top, the board as
+// wide as the screen allows minus a gutter, the tray of three pieces in thumb reach.
+// Wider screens centre the same column; there is no separate landscape layout.
 
-const BOARD_CELLS = 8;
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
 
-export interface HandSlot {
-  index: number;
-  /** Center x of the slot. */
-  cx: number;
-  /** Center y of the slot. */
-  cy: number;
+export const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+export const LAYOUT = {
+  /** Side gutter between the screen (or column) edge and the board. */
+  gutter: 16,
+  /** Column width cap on tablets, landscape and desktop. */
+  maxColumn: 480,
+  hudHeight: 64,
+  /** Minimum gap between HUD and board, and between board and tray. */
+  gap: 12,
+  /** Tray blocks are this fraction of a board cell. */
+  trayScale: 0.5,
+  /** The longest piece is 5 cells; slots must fit it at tray scale. */
+  maxPieceCells: 5,
+  /** Padding inside a tray slot around the piece. */
+  slotPadding: 8,
+  /** Minimum touch target (CSS px). */
+  minTouch: 44,
+  /** Share of spare vertical space placed above the board (the rest goes to the tray). */
+  spareAboveBoard: 0.35,
+} as const;
+
+export interface Rect {
+  x: number;
+  y: number;
   w: number;
   h: number;
+}
+
+export interface HandSlot extends Rect {
+  index: number;
+  /** Centre of the slot. */
+  cx: number;
+  cy: number;
 }
 
 export interface Layout {
   width: number;
   height: number;
+  /** The safe area: the viewport minus the insets. */
+  safe: Rect;
+  /** The centred content column. */
+  column: Rect;
+  hud: Rect;
   board: { x: number; y: number; size: number; cell: number };
-  hand: { top: number; areaH: number; slotW: number; cell: number; slots: HandSlot[] };
+  hand: { cell: number; slots: HandSlot[] };
 }
 
-/**
- * @param width  viewport width in CSS px
- * @param height viewport height in CSS px
- */
-export function computeLayout(width: number, height: number): Layout {
-  const boardSize = Math.min(width * 0.94, height * 0.6);
-  const cell = boardSize / BOARD_CELLS;
-  const boardX = (width - boardSize) / 2;
-  const boardY = Math.max(height * 0.05, 8);
+export function computeLayout(width: number, height: number, insets: Insets = NO_INSETS): Layout {
+  const L = LAYOUT;
+  const safe: Rect = {
+    x: insets.left,
+    y: insets.top,
+    w: Math.max(0, width - insets.left - insets.right),
+    h: Math.max(0, height - insets.top - insets.bottom),
+  };
+  const colW = Math.min(safe.w, L.maxColumn);
+  const column: Rect = { x: safe.x + (safe.w - colW) / 2, y: safe.y, w: colW, h: safe.h };
+  const hud: Rect = { x: column.x, y: column.y, w: colW, h: L.hudHeight };
 
-  const handTop = boardY + boardSize + cell * 0.8;
-  const handAreaH = Math.max(cell * 2, height - handTop - 8);
-  const slotW = width / 3;
-  // Hand blocks are smaller; ensure a 5-wide piece fits and slots aren't too tall.
-  const handCell = Math.min(cell * 0.62, slotW / 5.6, handAreaH / 6);
+  // Board size: limited by width (gutters) and by height (HUD, gaps, and a tray tall
+  // enough for a 5-cell piece at tray scale).
+  const traySlotPad = 2 * L.slotPadding;
+  const trayPerBoard = (L.maxPieceCells * L.trayScale) / 8; // tray piece height per board px
+  const availH = column.h - L.hudHeight - 2 * L.gap - traySlotPad;
+  const byWidth = colW - 2 * L.gutter;
+  const byHeight = availH / (1 + trayPerBoard);
+  const boardSize = Math.max(0, Math.floor(Math.min(byWidth, byHeight)));
+  const cell = boardSize / 8;
 
-  const slots = [0, 1, 2].map((i): HandSlot => ({
-    index: i,
-    cx: (i + 0.5) * slotW,
-    cy: handTop + handAreaH / 2,
+  const slotW = colW / 3;
+  const trayCell = Math.min(cell * L.trayScale, (slotW - traySlotPad) / L.maxPieceCells);
+  const minTrayH = Math.max(L.maxPieceCells * trayCell + traySlotPad, L.minTouch);
+
+  const spare = Math.max(0, availH + traySlotPad - boardSize - minTrayH);
+  const boardY = hud.y + hud.h + L.gap + spare * L.spareAboveBoard;
+  const trayY = boardY + boardSize + L.gap;
+  const trayH = column.y + column.h - trayY;
+
+  const slots = [0, 1, 2].map((index): HandSlot => ({
+    index,
+    x: column.x + index * slotW,
+    y: trayY,
     w: slotW,
-    h: handAreaH,
+    h: trayH,
+    cx: column.x + (index + 0.5) * slotW,
+    cy: trayY + trayH / 2,
   }));
 
   return {
     width,
     height,
-    board: { x: boardX, y: boardY, size: boardSize, cell },
-    hand: { top: handTop, areaH: handAreaH, slotW, cell: handCell, slots },
+    safe,
+    column,
+    hud,
+    board: { x: column.x + (colW - boardSize) / 2, y: boardY, size: boardSize, cell },
+    hand: { cell: trayCell, slots },
   };
+}
+
+/** Index of the tray slot containing (x, y), or -1. */
+export function slotAt(layout: Layout, x: number, y: number): number {
+  for (const s of layout.hand.slots) {
+    if (x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h) return s.index;
+  }
+  return -1;
 }

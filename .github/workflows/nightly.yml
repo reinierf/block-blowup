@@ -10,9 +10,28 @@ permissions:
 
 jobs:
   perf:
-    name: Frame-time benchmark (non-blocking)
+    name: Frame cost under 4x CPU throttle (non-blocking)
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --user 1001
     steps:
-      # Real job (throttled Playwright drag, p50/p95 frame times, alert above 20 ms)
-      # arrives in Phase 4. Passes trivially until then.
-      - run: echo "Performance job not configured yet"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Fails (and so alerts) when p95 frame cost exceeds 20 ms. Not part of the CI
+      # pipeline, so it never blocks merges.
+      - name: Frame cost
+        run: npx playwright test --project=perf --reporter=list
+        env:
+          CI: 'true'
+          PERF: '1'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-report
+          path: test-results
+          if-no-files-found: ignore
