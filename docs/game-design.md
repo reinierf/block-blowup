@@ -85,10 +85,14 @@ Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
    points = round(base * comboMultiplier)
    ```
 
-   `LINE_POINTS = [0, 10, 40, 90, 160]`
-   → 1 line = 10, 2 = 40, 3 = 90, 4+ = 160. Clearing more at once is super-linear.
+   `LINE_POINTS = [0, 10, 40, 90, 160, 250, 360, 490]`
+   → 1 line = 10, 2 = 40, 3 = 90, 4 = 160, 5 = 250, 6 = 360, 7+ = 490. Clearing more at
+   once is super-linear. (With the current shapes a single move can clear at most 6 lines.)
 
-3. **Combo multiplier** — `comboMultiplier(combo) = 1 + 0.5 * (combo - 1)`
+3. **Combo multiplier** — `comboMultiplier(combo) = min(5, 1 + 0.5 * (combo - 1))`
+
+   ×1 for the first clear, +0.5 per further clear in the streak, capped at
+   `COMBO_MULT_CAP` (×5, reached at combo 9).
 
    The combo counter increments on every placement that clears at least one line. A
    placement that clears nothing does **not** break the streak straight away: the game
@@ -101,6 +105,24 @@ Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
    The streak therefore survives roughly one hand without a clear, like the original.
    `bestCombo` records the longest streak achieved this run. Both `combo` and
    `movesSinceClear` are reported in every turn result.
+
+4. **Board-clear bonus** — when a clearing move leaves the board completely empty, it
+   also earns `round(ALL_CLEAR_BONUS × comboMultiplier)` with `ALL_CLEAR_BONUS = 300`, and
+   the turn result has `allClear: true`.
+
+5. **Praise** — every turn result carries a `praise` word for multi-line clears:
+   2 lines → "Good", 3 → "Great", 4 → "Excellent", 5+ → "Amazing" (`PRAISE_BY_LINES`);
+   `null` otherwise. The renderer will show it in Phase 6, together with "Combo ×N".
+
+Total points for a move = placement + line-clear + board-clear bonus. The turn result
+(`TurnResult` in `src/game/state.ts`) reports the placed and cleared cells, rows, cols,
+`lines`, `combo`, `movesSinceClear`, `allClear`, `praise`, `points` and `gameOver`;
+renderers drive all effects from it and never recompute rules.
+
+### Tuning choices (taste; easy to change in `config.ts`)
+
+- Combo multiplier capped at ×5 so very long streaks don't dwarf everything else.
+- Praise words and thresholds as above. Single-line clears get no word.
 
 ## 6. Game over
 

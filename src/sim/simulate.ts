@@ -22,6 +22,8 @@ export interface GameStats {
   moves: number;
   score: number;
   bestCombo: number;
+  /** Moves that emptied the whole board. */
+  allClears: number;
   /** Game over was detected right after a fresh hand was dealt (dead on arrival). */
   diedOnFreshHand: boolean;
   /** Board fill fraction (0–1) after every move. */
@@ -36,6 +38,8 @@ export interface BatchStats {
   avgScore: number;
   bestScore: number;
   avgBestCombo: number;
+  /** Board clears per game, on average. */
+  avgAllClears: number;
   deadFreshHands: number;
   /** Average board fill after move N (N = 10, 20, 30, …) among games still running. */
   fillByMove: Record<number, number>;
@@ -49,6 +53,7 @@ export function playGame(seed: number): GameStats {
   const log: GameLogEntry[] = [];
   const fill: number[] = [];
   let diedOnFreshHand = false;
+  let allClears = 0;
   const cells = game.size * game.size;
 
   while (game.status === GameStatus.PLAYING && log.length < MAX_MOVES) {
@@ -69,6 +74,7 @@ export function playGame(seed: number): GameStats {
     });
     const filled = game.board.grid.reduce((n, row) => n + row.filter((c) => c !== null).length, 0);
     fill.push(filled / cells);
+    if (result.allClear) allClears++;
     if (result.gameOver && handWasLast) diedOnFreshHand = true;
   }
 
@@ -77,6 +83,7 @@ export function playGame(seed: number): GameStats {
     moves: log.length,
     score: game.score,
     bestCombo: game.bestCombo,
+    allClears,
     diedOnFreshHand,
     fill,
     log,
@@ -106,6 +113,7 @@ export function summarize(games: readonly GameStats[]): BatchStats {
     avgScore: sum((g) => g.score) / n,
     bestScore: Math.max(...games.map((g) => g.score)),
     avgBestCombo: sum((g) => g.bestCombo) / n,
+    avgAllClears: sum((g) => g.allClears) / n,
     deadFreshHands: games.filter((g) => g.diedOnFreshHand).length,
     fillByMove,
   };

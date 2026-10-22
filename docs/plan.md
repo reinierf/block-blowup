@@ -7,7 +7,7 @@ This file tracks progress against those phases and records decisions made along 
 
 - [x] **Phase 0 — Fork and tooling** (2026-10-22)
 - [x] **Phase 1 — Characterisation tests and simulation harness** (2026-10-22)
-- [ ] Phase 2 — Rules (config module, combo grace, board-clear bonus)
+- [x] **Phase 2 — Rules (config module, combo grace, board-clear bonus)** (2026-10-22)
 - [ ] Phase 3 — Generator (weighted, fair, mercy rule)
 - [ ] Phase 4 — PixiJS renderer, mobile layout, theme
 - [ ] Phase 5 — Input and preview
@@ -55,6 +55,26 @@ This file tracks progress against those phases and records decisions made along 
 - Deferred on purpose: the hard check "0 games end on a dead fresh hand" can only pass once
   the Phase 3 generator exists (the snapshot has 2 / 50 today). The save → restore property
   waits for serialisation (Phase 7).
+
+## Phase 2 notes
+
+- `src/game/config.ts` holds every gameplay number. Three commits: config refactor (no
+  behaviour change); combo grace window (old combo tests changed on purpose); board-clear
+  bonus, line table to 7 lines, ×5 combo-multiplier cap, `allClear` / `praise` /
+  `movesSinceClear` on the turn result.
+- Simulation, seeds 1..300 (the bot ignores score, so moves and deaths don't change):
+
+  | Metric                    | Fork baseline   | After Phase 2    |
+  | ------------------------- | --------------- | ---------------- |
+  | Average moves             | 34.4            | 34.4             |
+  | Score median / avg / best | 265 / 300 / 955 | 375 / 444 / 1935 |
+  | Average best combo        | 2.50            | 6.64             |
+  | Board clears per game     | (not scored)    | 0.010            |
+  | Died on a fresh hand      | 13 / 300        | 13 / 300         |
+
+- Taste defaults to review: `COMBO_GRACE = 3`, `COMBO_MULT_CAP = 5`,
+  `ALL_CLEAR_BONUS = 300`, line table `[0, 10, 40, 90, 160, 250, 360, 490]`, praise words
+  Good / Great / Excellent / Amazing at 2 / 3 / 4 / 5+ lines.
 
 ## Known issues (inherited from the fork)
 

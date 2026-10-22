@@ -31,6 +31,7 @@ if (process.argv.includes('--update')) {
     `  Score median/avg/best:    ${Math.round(s.medianScore)} / ${r(s.avgScore, 0)} / ${s.bestScore}`,
   );
   console.log(`  Average best combo:       ${r(s.avgBestCombo, 2)}`);
+  console.log(`  Board clears per game:    ${r(s.avgAllClears, 3)}`);
   console.log(
     `  Died on a fresh hand:     ${s.deadFreshHands} / ${s.games} (${r((100 * s.deadFreshHands) / s.games)}%)`,
   );

@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { COMBO_GRACE } from '../../src/game/config';
+import { allClearPoints, lineClearPoints, praiseFor } from '../../src/game/scoring';
 import { Game, GameStatus } from '../../src/game/state';
 import { lcg } from '../../src/sim/lcg';
 
@@ -55,6 +56,15 @@ function playRandomGame(gameSeed: number, moveSeed: number, maxMoves: number): v
     }
     expect(r.combo).toBe(game.combo);
     expect(r.movesSinceClear).toBe(game.movesSinceClear);
+    // A board clear is reported exactly when a clearing move leaves the board empty.
+    expect(r.allClear).toBe(r.lines > 0 && game.board.isEmpty());
+    // Points break down into placement + lines × combo + board-clear bonus × combo.
+    expect(r.points).toBe(
+      r.placedCells.length +
+        lineClearPoints(r.lines, r.combo) +
+        (r.allClear ? allClearPoints(r.combo) : 0),
+    );
+    expect(r.praise).toBe(praiseFor(r.lines));
     expect(game.bestCombo).toBeGreaterThanOrEqual(game.combo);
     // Game over exactly when no hand piece fits.
     expect(r.gameOver).toBe(isOver(game));

@@ -79,6 +79,8 @@ describe('Game: placement', () => {
       lines: 0,
       combo: 0,
       movesSinceClear: 1,
+      allClear: false,
+      praise: null,
       points: 4,
       gameOver: false,
     });
@@ -88,23 +90,26 @@ describe('Game: placement', () => {
   });
 
   it('clears a line and reports the cleared cells with their colours', () => {
-    const g = setup(bottomRowGap(2), ['line2-h', 'single', 'single']);
+    // A stray cell in the top-right corner keeps this from being a board clear.
+    const g = setup(['.......#', ...bottomRowGap(2).slice(1)], ['line2-h', 'single', 'single']);
     const r = g.placeAt(0, 0, 7)!;
     expect(r.rows).toEqual([7]);
     expect(r.cols).toEqual([]);
     expect(r.lines).toBe(1);
     expect(r.combo).toBe(1);
     expect(r.points).toBe(2 + 10);
+    expect(r.allClear).toBe(false);
+    expect(r.praise).toBeNull();
     expect(r.clearedCells).toHaveLength(8);
     expect(r.clearedCells.slice(0, 3)).toEqual([
       { x: 0, y: 7, color: 'color0' },
       { x: 1, y: 7, color: 'color0' },
       { x: 2, y: 7, color: 'c' },
     ]);
-    expect(g.board.isEmpty()).toBe(true);
+    expect(boardToAscii(g.board)).toEqual(['.......#', ...EMPTY.slice(1)]);
   });
 
-  it('clears a row and a column together, sharing the crossing cell', () => {
+  it('clears a row and a column together, sharing the crossing cell (and the board)', () => {
     const rows = [
       '#.......',
       '#.......',
@@ -121,11 +126,13 @@ describe('Game: placement', () => {
     expect(r.cols).toEqual([0]);
     expect(r.lines).toBe(2);
     expect(r.clearedCells).toHaveLength(15);
-    expect(r.points).toBe(1 + 40);
+    expect(r.praise).toBe('Good');
+    expect(r.allClear).toBe(true);
+    expect(r.points).toBe(1 + 40 + 300);
     expect(g.board.isEmpty()).toBe(true);
   });
 
-  it('caps line points at 4+ lines (160) for big multi-line clears', () => {
+  it('scores a 6-line clear from the extended line table', () => {
     // Rows 0–2 and columns 0–2 are full except the top-left 3×3 square, so a square3 at
     // (0, 0) completes 3 rows and 3 columns at once.
     const rows = [
@@ -141,8 +148,28 @@ describe('Game: placement', () => {
     const g = setup(rows, ['square3', 'single', 'single']);
     const r = g.placeAt(0, 0, 0)!;
     expect(r.lines).toBe(6);
-    expect(r.points).toBe(9 + 160);
+    expect(r.praise).toBe('Amazing');
+    expect(r.allClear).toBe(true);
+    expect(r.points).toBe(9 + 360 + 300);
     expect(g.board.isEmpty()).toBe(true);
+  });
+
+  it('multiplies the board-clear bonus by the combo multiplier', () => {
+    const rows = [
+      '.#######',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '........',
+      '.#######',
+    ];
+    const g = setup(rows, ['single', 'single', 'single']);
+    const r1 = g.placeAt(0, 0, 0)!;
+    expect([r1.combo, r1.allClear, r1.points]).toEqual([1, false, 1 + 10]);
+    const r2 = g.placeAt(1, 0, 7)!;
+    expect([r2.combo, r2.allClear, r2.points]).toEqual([2, true, 1 + 15 + 450]);
   });
 });
 

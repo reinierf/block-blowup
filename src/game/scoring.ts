@@ -2,7 +2,13 @@
 // Scoring formulas. The numbers they use live in config.ts.
 // Pure module: no DOM, no rendering.
 
-import { LINE_POINTS, PLACE_POINTS_PER_CELL, comboMultiplierFor } from './config';
+import {
+  ALL_CLEAR_BONUS,
+  LINE_POINTS,
+  PLACE_POINTS_PER_CELL,
+  PRAISE_BY_LINES,
+  comboMultiplierFor,
+} from './config';
 import type { Shape } from './pieces';
 
 export { LINE_POINTS };
@@ -24,4 +30,14 @@ export function comboMultiplier(combo: number): number {
 export function lineClearPoints(lines: number, combo: number): number {
   const base = LINE_POINTS[Math.min(lines, LINE_POINTS.length - 1)]!;
   return Math.round(base * comboMultiplier(combo));
+}
+
+/** Bonus for emptying the whole board while on combo streak `combo`. */
+export function allClearPoints(combo: number): number {
+  return Math.round(ALL_CLEAR_BONUS * comboMultiplier(combo));
+}
+
+/** Praise word for clearing `lines` lines in one move, or null. */
+export function praiseFor(lines: number): string | null {
+  return PRAISE_BY_LINES.find((p) => lines >= p.minLines)?.word ?? null;
 }

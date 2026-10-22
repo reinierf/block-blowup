@@ -14,6 +14,7 @@ export interface SimSnapshot {
   avgScore: number;
   bestScore: number;
   avgBestCombo: number;
+  avgAllClears: number;
   deadFreshHands: number;
   /** Average board fill at moves 10, 20 and 30. */
   fillAt10: number;
@@ -30,6 +31,7 @@ export const TOLERANCES: Record<Metric, { rel?: number; abs?: number }> = {
   avgScore: { rel: 0.1 },
   bestScore: { rel: 0.25 },
   avgBestCombo: { abs: 0.25 },
+  avgAllClears: { abs: 0.1 },
   deadFreshHands: { abs: 2 },
   fillAt10: { abs: 0.05 },
   fillAt20: { abs: 0.05 },
@@ -46,6 +48,7 @@ export function toSnapshot(stats: BatchStats): SimSnapshot {
     avgScore: round(stats.avgScore),
     bestScore: stats.bestScore,
     avgBestCombo: round(stats.avgBestCombo),
+    avgAllClears: round(stats.avgAllClears),
     deadFreshHands: stats.deadFreshHands,
     fillAt10: round(stats.fillByMove[10] ?? 0),
     fillAt20: round(stats.fillByMove[20] ?? 0),

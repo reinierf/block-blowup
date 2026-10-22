@@ -5,7 +5,7 @@
 import { Board } from './board';
 import { SHAPES, PieceBag, colorFor, type Rng, type Shape } from './pieces';
 import { COMBO_GRACE } from './config';
-import { placementPoints, lineClearPoints } from './scoring';
+import { allClearPoints, lineClearPoints, placementPoints, praiseFor } from './scoring';
 
 export const GameStatus = Object.freeze({
   PLAYING: 'playing',
@@ -35,6 +35,11 @@ export interface TurnResult {
   combo: number;
   /** Placements since the last clear (0 if this move cleared). */
   movesSinceClear: number;
+  /** This move emptied the whole board (and earned the all-clear bonus). */
+  allClear: boolean;
+  /** Praise word for a multi-line clear ("Good", "Great", ...), or null. */
+  praise: string | null;
+  /** Total points for this move: placement + line clear + all-clear bonus. */
   points: number;
   gameOver: boolean;
 }
@@ -110,6 +115,7 @@ export class Game {
 
     let points = placementPoints(slot.shape);
     let clearedCells: ClearedCell[] = [];
+    let allClear = false;
 
     const { rows, cols } = this.board.fullLines();
     const lines = rows.length + cols.length;
@@ -121,6 +127,10 @@ export class Game {
       clearedCells = this.collectLineCells(rows, cols); // capture colors BEFORE clearing
       points += lineClearPoints(lines, this.combo);
       this.board.clearLines(rows, cols);
+      if (this.board.isEmpty()) {
+        allClear = true;
+        points += allClearPoints(this.combo);
+      }
     } else {
       this.movesSinceClear += 1;
       if (this.movesSinceClear >= COMBO_GRACE) this.combo = 0;
@@ -141,6 +151,8 @@ export class Game {
       lines,
       combo: this.combo,
       movesSinceClear: this.movesSinceClear,
+      allClear,
+      praise: praiseFor(lines),
       points,
       gameOver: this.status === GameStatus.GAME_OVER,
     };
