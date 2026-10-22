@@ -198,6 +198,17 @@ This file tracks progress against those phases and records decisions made along 
   Screen"), play in airplane mode, kill the app mid-game and Continue, and the Phase 4/5
   phone checks (60 fps, crisp, no gesture conflicts, touch lift offset).
 
+## CI cost (2026-10-22)
+
+Public repo, so Actions minutes are free; still trimmed to keep runs fast and quiet:
+
+- CI skips pushes and PRs that only change Markdown or `docs/` (no deploy for those).
+- The performance job runs weekly (Mondays 03:00 UTC) and by hand, not nightly
+  (`.github/workflows/perf.yml`).
+- Lighthouse reuses the `dist` artifact from the check job instead of rebuilding.
+- Not done yet, worth it once work happens on branches: desktop-only e2e off `main`, and
+  CI only for `main` pushes plus PRs.
+
 ## Known issues
 
 - None open.

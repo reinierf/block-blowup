@@ -1,8 +1,15 @@
 name: CI
 
 on:
+  # Doc-only changes don't touch the game, so they don't need the pipeline (or a deploy).
   push:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -88,8 +95,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # npm ci is still needed for vite preview and @lhci/cli; the build itself is reused, so
+      # Lighthouse measures exactly what gets deployed.
       - run: npm ci
-      - run: npx vite build
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
       # Mobile preset (Lighthouse default): performance and accessibility >= 0.9.
       # Installability is covered by the Playwright PWA tests (Lighthouse 12 dropped its
       # PWA category).

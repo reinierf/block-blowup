@@ -56,7 +56,7 @@ helpers are in `tests/e2e/helpers.ts`. Playwright runs with one worker: every br
 renders WebGL in software, and parallel browsers starve each other.
 
 Visual baselines (`tests/visual/__screenshots__`) are rendered only on Linux in the pinned
-image (`VISUAL=1`); the nightly frame-cost job is `tests/perf` (`PERF=1`). The `pwa`
+image (`VISUAL=1`); the weekly frame-cost job is `tests/perf` (`PERF=1`). The `pwa`
 project (`tests/pwa`, Chromium only) runs against `vite preview` of a `--mode test` build
 in `dist-test/`, which Playwright builds itself.
 
@@ -78,41 +78,41 @@ first Play/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 
 ## Layout
 
-| Path                            | Responsibility                                      |
-| ------------------------------- | --------------------------------------------------- |
-| `index.html`, `style.css`       | Page shell, theme, HUD, game-over overlay           |
-| `src/main.ts`                   | Bootstrap, game loop, wiring, HUD/overlay, effects  |
-| `src/input.ts`                  | Pointer-based drag & drop (mouse + touch, one path) |
-| `src/storage.ts`                | High-score persistence (`localStorage`)             |
-| `src/game/pieces.ts`            | Shape set (with families), palette                  |
-| `src/game/config.ts`            | Every tunable gameplay number                       |
-| `src/game/rng.ts`               | Seeded RNG (mulberry32)                             |
-| `src/game/generator.ts`         | Hand dealing: weights, fairness, mercy rule         |
-| `src/game/solver.ts`            | Whole-hand solvability search                       |
-| `src/game/bitboard.ts`          | Packed boards for fast search                       |
-| `src/game/difficulty.ts`        | Difficulty curve                                    |
-| `src/game/board.ts`             | 8×8 grid, placement validation, line clearing       |
-| `src/game/scoring.ts`           | Scoring formulas                                    |
-| `src/game/state.ts`             | Game state machine, hand management                 |
-| `src/sim/`                      | Seeded LCG, greedy bot, simulation runner, snapshot |
-| `src/render/layout.ts`          | Viewport geometry (shared by renderer + input)      |
-| `src/render/renderer.ts`        | Renderer interface                                  |
-| `src/render/pixi-renderer.ts`   | PixiJS renderer                                     |
-| `src/render/theme.ts`           | Every colour (tokens)                               |
-| `src/input-logic.ts`            | Pure drag geometry (snapping, drop tolerance)       |
-| `src/test-hook.ts`              | `?seed&test=1` hook (dev/test builds only)          |
-| `src/feedback/plan.ts`          | Turn result → feedback plan (pure)                  |
-| `src/game/save.ts`              | Save / validate / restore a game in progress        |
-| `src/pwa.ts`                    | Service worker registration, update prompt          |
-| `src/audio.ts`                  | Synthesised Web Audio sound effects                 |
-| `src/haptics.ts`                | Feature-detected vibration                          |
-| `src/settings.ts`               | Mute / haptics / reduced-motion settings            |
-| `tests/`                        | Vitest + Playwright suites (see above)              |
-| `.github/workflows/ci.yml`      | CI pipeline + Pages deploy                          |
-| `.github/workflows/nightly.yml` | Nightly performance job                             |
-| `docs/plan.md`                  | Roadmap and phase progress                          |
-| `docs/game-design.md`           | How the game works (rules, scoring, systems)        |
-| `HANDOVER.md`                   | Research, specs and the phased plan                 |
+| Path                          | Responsibility                                      |
+| ----------------------------- | --------------------------------------------------- |
+| `index.html`, `style.css`     | Page shell, theme, HUD, game-over overlay           |
+| `src/main.ts`                 | Bootstrap, game loop, wiring, HUD/overlay, effects  |
+| `src/input.ts`                | Pointer-based drag & drop (mouse + touch, one path) |
+| `src/storage.ts`              | High-score persistence (`localStorage`)             |
+| `src/game/pieces.ts`          | Shape set (with families), palette                  |
+| `src/game/config.ts`          | Every tunable gameplay number                       |
+| `src/game/rng.ts`             | Seeded RNG (mulberry32)                             |
+| `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy rule         |
+| `src/game/solver.ts`          | Whole-hand solvability search                       |
+| `src/game/bitboard.ts`        | Packed boards for fast search                       |
+| `src/game/difficulty.ts`      | Difficulty curve                                    |
+| `src/game/board.ts`           | 8×8 grid, placement validation, line clearing       |
+| `src/game/scoring.ts`         | Scoring formulas                                    |
+| `src/game/state.ts`           | Game state machine, hand management                 |
+| `src/sim/`                    | Seeded LCG, greedy bot, simulation runner, snapshot |
+| `src/render/layout.ts`        | Viewport geometry (shared by renderer + input)      |
+| `src/render/renderer.ts`      | Renderer interface                                  |
+| `src/render/pixi-renderer.ts` | PixiJS renderer                                     |
+| `src/render/theme.ts`         | Every colour (tokens)                               |
+| `src/input-logic.ts`          | Pure drag geometry (snapping, drop tolerance)       |
+| `src/test-hook.ts`            | `?seed&test=1` hook (dev/test builds only)          |
+| `src/feedback/plan.ts`        | Turn result → feedback plan (pure)                  |
+| `src/game/save.ts`            | Save / validate / restore a game in progress        |
+| `src/pwa.ts`                  | Service worker registration, update prompt          |
+| `src/audio.ts`                | Synthesised Web Audio sound effects                 |
+| `src/haptics.ts`              | Feature-detected vibration                          |
+| `src/settings.ts`             | Mute / haptics / reduced-motion settings            |
+| `tests/`                      | Vitest + Playwright suites (see above)              |
+| `.github/workflows/ci.yml`    | CI pipeline + Pages deploy                          |
+| `.github/workflows/perf.yml`  | Weekly performance job (also runnable by hand)      |
+| `docs/plan.md`                | Roadmap and phase progress                          |
+| `docs/game-design.md`         | How the game works (rules, scoring, systems)        |
+| `HANDOVER.md`                 | Research, specs and the phased plan                 |
 
 ## Environment notes (this machine)
 

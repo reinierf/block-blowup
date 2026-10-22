@@ -10,7 +10,7 @@ export const PWA_DIST = 'dist-test';
  * - pixel-7, iphone-14, desktop-chromium: end-to-end tests (tests/e2e).
  * - visual: screenshot baselines (tests/visual). Only with VISUAL=1, because baselines are
  *   rendered on Linux in the pinned Playwright image (CI, or `npm run e2e:visual`).
- * - perf: frame-time measurement (tests/perf). Only with PERF=1 (nightly job).
+ * - perf: frame-time measurement (tests/perf). Only with PERF=1 (weekly perf.yml job).
  * - pwa: manifest, service worker, offline, update prompt (tests/pwa), against `vite preview`
  *   of a `--mode test` build. Chromium only: Playwright's WebKit has no service workers.
  */
