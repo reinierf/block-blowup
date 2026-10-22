@@ -48,7 +48,7 @@ test('line-clear preview during a drag', async ({ page }) => {
 });
 
 test('greyed-out tray piece', async ({ page }) => {
-  await openGame(page, 298);
+  await openGame(page, 808);
   await playFirstFit(page, 10);
   await expect(page).toHaveScreenshot('greyed-out-piece.png');
 });

@@ -200,8 +200,8 @@ that matters — if two of your three pieces still fit, you keep playing.
   `devicePixelRatio`, capped at 2. Frames are only drawn when something changed (game
   state, drag, layout, running effects), and the loop pauses while the tab is hidden.
 - **Theme** (`src/render/theme.ts`; every colour lives there): `VIVID`, close to the
-  original. Royal-blue background, a top-to-bottom gradient from `#4A6BC8` to `#8097D8`
-  (the same blue mixed with 30% white), board panel `#1C2754`, empty cells `#243163`,
+  original. Royal-blue background, a top-to-bottom gradient from `#1c49c7` to `#5978cf`
+  (a lighter tint of the same blue), board panel `#1C2754`, empty cells `#243163`,
   seven saturated block colours (red `#EE4B45`, orange `#F5902E`,
   yellow `#F8CB3A`, green `#5DCB48`, cyan `#3CC7EE`, blue `#3E72E6`, purple `#A05BDE`),
   text `#FFFFFF` / `#C9D4F2`, accent (gold) `#FFC83D`. Blocks are bevelled squares (lighter
@@ -314,7 +314,7 @@ missing, blocked or corrupt data falls back to "nothing saved".
 ## 9a. PWA
 
 - `vite-plugin-pwa` (prompt mode): web manifest (name "Block Blowup", short name
-  "Blowup", standalone, portrait, theme `#4A6BC8`, background `#8097D8`, 192/512 icons
+  "Blowup", standalone, portrait, theme `#1c49c7`, background `#5978cf`, 192/512 icons
   as both `any` and `maskable`), Apple touch icon and iOS standalone meta tags.
 - The service worker precaches everything (HTML, JS including the renderer chunk, CSS,
   icons), so the game runs fully offline after the first visit.

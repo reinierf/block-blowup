@@ -69,7 +69,7 @@ export const SUBDUED: Theme = {
 
 export const VIVID: Theme = {
   bgTop: '#1c49c7',
-  /** bgTop mixed with 30% white. */
+  /** A lighter tint of bgTop (top-to-bottom gradient). */
   bgBottom: '#5978cf',
   boardPanel: '#1C2754',
   emptyCell: '#243163',

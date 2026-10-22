@@ -2,10 +2,10 @@ import { test, expect } from './fixtures';
 import { lastFeedback, openGame, playClearing, snapshot } from './helpers';
 
 // Seeds found by searching in Node with the same most-lines policy as playClearing:
-// seed 129 reaches combo 2 on move 4; seed 11 clears 2 lines at once on move 4.
+// seed 92 reaches combo 2 on move 4; seed 67 clears 2 lines at once on move 4.
 
 test('a seeded line clear and combo: popup, praise, combo badge, sounds', async ({ page }) => {
-  await openGame(page, 129);
+  await openGame(page, 92);
   await playClearing(page, 4);
   const snap = await snapshot(page);
   expect(snap.combo).toBeGreaterThanOrEqual(2);
@@ -22,7 +22,7 @@ test('a seeded line clear and combo: popup, praise, combo badge, sounds', async 
 });
 
 test('a 2-line clear shakes the screen', async ({ page }) => {
-  await openGame(page, 11);
+  await openGame(page, 67);
   await playClearing(page, 4);
   const fb = (await lastFeedback(page))!;
   expect(fb.popup?.praise).toBe('Good');
@@ -33,7 +33,7 @@ test.describe('with prefers-reduced-motion', () => {
   test.use({ reducedMotion: 'reduce' });
 
   test('the same 2-line clear does not shake and uses fewer particles', async ({ page }) => {
-    await openGame(page, 11);
+    await openGame(page, 67);
     await playClearing(page, 4);
     const fb = (await lastFeedback(page))!;
     expect(fb.popup?.praise).toBe('Good');

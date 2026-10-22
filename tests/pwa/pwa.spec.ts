@@ -26,8 +26,8 @@ test('the manifest has the required fields and its icons load', async ({ page, r
     short_name: 'Blowup',
     display: 'standalone',
     orientation: 'portrait',
-    theme_color: '#4A6BC8',
-    background_color: '#8097D8',
+    theme_color: '#1c49c7',
+    background_color: '#5978cf',
   });
   const icons = manifest.icons as { src: string; sizes: string; purpose: string }[];
   for (const size of ['192x192', '512x512']) {
