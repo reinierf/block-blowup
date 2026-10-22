@@ -21,6 +21,7 @@ export const FEEDBACK = {
   hapticPlace: 12,
   hapticClear: [20, 30, 35] as number[],
   hapticAllClear: [30, 40, 30, 40, 60] as number[],
+  /** Played with the game-over reveal (feedback/game-over.ts), not with the last move. */
   hapticGameOver: [60, 60, 120] as number[],
 } as const;
 
@@ -76,10 +77,6 @@ export function feedbackFor(result: TurnResult, opts: { reduceMotion: boolean })
   if (result.allClear) {
     sounds.push({ kind: 'allClear' });
     haptic = FEEDBACK.hapticAllClear;
-  }
-  if (result.gameOver) {
-    sounds.push({ kind: 'gameOver' });
-    haptic = FEEDBACK.hapticGameOver;
   }
 
   const shake =

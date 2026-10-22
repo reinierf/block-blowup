@@ -91,10 +91,10 @@ describe('feedbackFor', () => {
     expect(p.haptic).toEqual(FEEDBACK.hapticAllClear);
   });
 
-  it('game over adds its sound and vibration', () => {
+  it('the last move of a game sounds like any move: game over waits for the reveal', () => {
     const p = feedbackFor(result({ gameOver: true }), motion);
-    expect(p.sounds.map((s) => s.kind)).toEqual(['place', 'gameOver']);
-    expect(p.haptic).toEqual(FEEDBACK.hapticGameOver);
+    expect(p.sounds).toEqual([{ kind: 'place' }]);
+    expect(p.haptic).toBe(FEEDBACK.hapticPlace);
   });
 });
 

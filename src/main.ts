@@ -3,7 +3,7 @@
 // (audio, haptics), HUD, PWA, and the frame loop.
 
 import { AudioManager } from './audio';
-import { feedbackFor, type FeedbackPlan } from './feedback/plan';
+import { FEEDBACK, feedbackFor, type FeedbackPlan } from './feedback/plan';
 import { difficultyFor } from './game/difficulty';
 import { Mulberry32 } from './game/rng';
 import { restoreGame, saveGame, type SavedGame } from './game/save';
@@ -144,6 +144,8 @@ function ensureRenderer(): Promise<Renderer> {
       getGame: () => game,
       onPlace: handlePlace,
     });
+    // A tap during the game-over sequence skips to the score screen.
+    r.canvas.addEventListener('pointerdown', () => r.skipGameOver());
     if (layout) r.resize(layout);
     return r;
   })();
@@ -208,7 +210,16 @@ function handlePlace(result: TurnResult): void {
   persist();
   updateHud();
   updateDebug();
-  if (game.status === GameStatus.GAME_OVER) renderer!.playGameOver(game, showGameOver);
+  if (game.status === GameStatus.GAME_OVER) {
+    renderer!.playGameOver(game, {
+      reduceMotion: reduceMotion(settings, motionQuery.matches),
+      onReveal: () => {
+        audio.play({ kind: 'gameOver' });
+        haptics.vibrate(FEEDBACK.hapticGameOver);
+      },
+      onDone: showGameOver,
+    });
+  }
 }
 
 function updateHud(): void {

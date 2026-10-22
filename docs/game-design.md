@@ -260,9 +260,14 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 - **Board clear:** "Board clear!" as the praise word, a gentle accent glow over the board
   (peaks at 28% opacity; no full-screen flash), and a multicoloured burst from the board
   centre.
-- **Game over:** filled blocks turn grey one by one (row by row, about 1 s in total), then
-  the score screen, which shows **"New best!"** when the score beats the best score from
-  when the game started.
+- **Game over** (`src/feedback/game-over.ts`): the last move plays out like any other
+  (no game-over cues yet); after a 0.6 s pause, "No space left!" drops onto the board, the
+  leftover tray pieces turn red and wiggle (0.5 s), and the game-over sound and vibration
+  play; 1.2 s later the filled blocks turn grey one by one (row by row, about 1.5 s for a
+  full board), then after 0.4 s the score screen, which shows **"New best!"** when the
+  score beats the best score from when the game started. A tap anywhere on the game skips
+  straight to the score screen. With reduced motion the banner fades in and the pieces
+  don't wiggle; the pause stays.
 - **Audio** (`src/audio.ts`, synthesised with Web Audio, no files): a soft click on every
   placement; a clear chord with one more note per extra line (up to 4) whose root rises
   2 semitones per combo step (from C5, capped one octave up); a rising arpeggio sting for
@@ -286,7 +291,7 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 - **Settings** (from the start screen or the HUD gear): Sound, Vibration (disabled with a
   note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
   and save immediately.
-- **Game over:** after the grey-out sequence, the score screen shows "New best!" when it
+- **Game over:** after the game-over sequence (or a tap that skips it), the score screen shows "New best!" when it
   applies, the score (large, Nunito with the HUD's shadow) and the best (with the crown),
   **Play again** and **Menu**.
 - **Look of all screens:** the game stays visible behind them, blurred (10 px, no dark

@@ -12,13 +12,14 @@ import {
   Text,
   Texture,
 } from 'pixi.js';
+import { GAME_OVER, gameOverAt, type GameOverFrame } from '../feedback/game-over';
 import { radialSpawns, spawnsOnCentreLine, type Spawn } from '../feedback/particles';
 import { FEEDBACK, type FeedbackPlan } from '../feedback/plan';
 import type { Game, TurnResult } from '../game/state';
 import type { DragState } from '../input';
 import { INPUT } from '../input-logic';
 import { trayCellFor, type Layout } from './layout';
-import type { Renderer, RendererOptions } from './renderer';
+import type { GameOverCallbacks, Renderer, RendererOptions } from './renderer';
 import { hexToNumber, shade, theme } from './theme';
 
 /** Gap between neighbouring cells, as a fraction of a cell. */
@@ -205,7 +206,7 @@ export async function createPixiRenderer(
     }
     trayKeys = [];
     dragKey = '';
-    clearEffects();
+    clearEffects(true);
   }
 
   // --- Tray and drag piece ---------------------------------------------------------------
@@ -235,7 +236,12 @@ export async function createPixiRenderer(
     return c;
   }
 
-  function drawTray(game: Game, drag: DragState | null, dt: number): void {
+  function drawTray(
+    game: Game,
+    drag: DragState | null,
+    dt: number,
+    over: GameOverFrame | null,
+  ): void {
     const l = layout!;
     for (const [uid, t] of pops) {
       if (t + dt >= DEAL_POP.seconds) pops.delete(uid);
@@ -297,8 +303,13 @@ export async function createPixiRenderer(
       );
       c.visible = !drag || drag.handIndex !== i;
       const fits = game.pieceFits(i);
-      c.alpha = fits ? 1 : UNPLACEABLE_ALPHA;
-      for (const sp of c.children) (sp as Sprite).tint = fits ? 0xffffff : UNPLACEABLE_TINT;
+      // Game over: the leftover pieces turn red and wiggle, to show they fit nowhere.
+      const stuck = !fits && !!over?.revealed;
+      c.alpha = fits ? 1 : stuck ? 0.9 : UNPLACEABLE_ALPHA;
+      const tint = fits ? 0xffffff : stuck ? hexToNumber(theme.ghostInvalid) : UNPLACEABLE_TINT;
+      for (const sp of c.children) (sp as Sprite).tint = tint;
+      const s = l.hand.slots[i]!;
+      c.position.set(s.cx + (stuck ? over.wiggle * trayCell : 0), s.cy);
     });
   }
 
@@ -366,11 +377,16 @@ export async function createPixiRenderer(
   /** Pseudo-colour for blocks greyed out by the game-over sequence. */
   const GREY = '__grey';
   let shake = { amp: 0, t: 0 };
-  let gameOverFade: {
+  /** The running (or finished) game-over sequence; see feedback/game-over.ts. */
+  let gameOver: {
     t: number;
+    /** Filled cells (row*8+col) in the order they grey. */
     order: number[];
-    perCell: number;
+    reduceMotion: boolean;
+    onReveal: (() => void) | null;
     onDone: (() => void) | null;
+    /** "No space left!", created when the reveal starts (and again after a resize). */
+    banner: Container | null;
   } | null = null;
 
   function label(text: string, size: number, color: string): Text {
@@ -488,21 +504,73 @@ export async function createPixiRenderer(
     }
   }
 
-  /** Game over: filled blocks turn grey one by one, then `onDone` (the score screen). */
-  function playGameOver(game: Game, onDone: () => void): void {
+  /**
+   * Game over: a pause, then the banner and the red leftover pieces (`onReveal`), then the
+   * filled blocks turn grey one by one, then `onDone` (the score screen).
+   */
+  function playGameOver(game: Game, cb: GameOverCallbacks): void {
     const order: number[] = [];
     game.board.grid.forEach((row, y) =>
       row.forEach((c, x) => {
         if (c !== null) order.push(y * 8 + x);
       }),
     );
-    if (opts.freezeAnimations || !layout || order.length === 0) {
-      gameOverFade = { t: Infinity, order, perCell: 0, onDone: null };
-      lastSignature = '';
-      onDone();
-      return;
+    gameOver = { t: 0, order, banner: null, ...cb };
+    if (opts.freezeAnimations || !layout) skipGameOver();
+  }
+
+  /** Jump to the end of the game-over sequence (a tap); does nothing when none is running. */
+  function skipGameOver(): void {
+    if (!gameOver?.onDone) return;
+    gameOver.t = Infinity;
+    finishGameOver();
+  }
+
+  /** Fire the sequence's callbacks that are due, each once. */
+  function finishGameOver(): void {
+    const g = gameOver!;
+    const f = gameOverAt(g.t, g.order.length, g.reduceMotion);
+    lastSignature = '';
+    if (f.revealed && g.onReveal) {
+      const reveal = g.onReveal;
+      g.onReveal = null;
+      reveal();
     }
-    gameOverFade = { t: 0, order, perCell: Math.min(0.035, 1.1 / order.length), onDone };
+    if (f.phase === 'done' && g.onDone) {
+      const done = g.onDone;
+      g.onDone = null;
+      done();
+    }
+  }
+
+  function drawBanner(f: GameOverFrame): void {
+    const g = gameOver!;
+    if (f.banner <= 0) return;
+    const b = layout!.board;
+    if (!g.banner) {
+      const size = Math.round(b.cell * 0.75);
+      g.banner = new Container();
+      g.banner.addChild(
+        new Text({
+          text: GAME_OVER.bannerText,
+          style: {
+            fontFamily: FONT,
+            fontWeight: '800',
+            fontSize: size,
+            fill: hexToNumber(theme.text),
+            stroke: { color: hexToNumber(theme.boardPanel), width: size * 0.18, join: 'round' },
+          },
+          anchor: 0.5,
+        }),
+      );
+      // Never wider than the board.
+      g.banner.scale.set(Math.min(1, (b.size * 0.94) / g.banner.width));
+      popupLayer.addChild(g.banner);
+    }
+    const p = f.banner;
+    const drop = g.reduceMotion ? 0 : b.cell * 1.2 * (1 - easeOutBack(p, DEAL_POP.overshoot));
+    g.banner.position.set(b.x + b.size / 2, b.y + b.size / 2 - drop);
+    g.banner.alpha = Math.min(1, p * 2);
   }
 
   function updateEffects(dt: number): void {
@@ -548,20 +616,14 @@ export async function createPixiRenderer(
       }
     }
 
-    if (gameOverFade && gameOverFade.onDone) {
-      gameOverFade.t += dt;
-      if (gameOverFade.t >= gameOverFade.order.length * gameOverFade.perCell + 0.4) {
-        const done = gameOverFade.onDone;
-        gameOverFade.onDone = null;
-        done();
-      }
+    if (gameOver?.onDone) {
+      gameOver.t += dt;
+      finishGameOver();
     }
   }
 
   function animating(): boolean {
-    return (
-      effects.length > 0 || pops.size > 0 || shake.amp > 0 || lift < 1 || !!gameOverFade?.onDone
-    );
+    return effects.length > 0 || pops.size > 0 || shake.amp > 0 || lift < 1 || !!gameOver?.onDone;
   }
 
   function disposeEffect(e: Effect): void {
@@ -571,11 +633,14 @@ export async function createPixiRenderer(
     else e.g.destroy();
   }
 
-  function clearEffects(): void {
+  /** Drop running effects; a resize keeps the game-over sequence going (redrawn to size). */
+  function clearEffects(keepGameOver = false): void {
     effects.splice(0).forEach(disposeEffect);
     shake = { amp: 0, t: 0 };
     app.stage.position.set(0, 0);
-    gameOverFade = null;
+    gameOver?.banner?.destroy({ children: true });
+    if (gameOver) gameOver.banner = null;
+    if (!keepGameOver) gameOver = null;
     lastSignature = '';
   }
 
@@ -611,18 +676,30 @@ export async function createPixiRenderer(
         cellSprites[i]!.texture = color ? blockTexture(color) : emptyTexture;
       }
     }
-    if (gameOverFade) {
-      const f = gameOverFade;
-      const n = f.perCell > 0 ? Math.floor(f.t / f.perCell) : f.order.length;
-      for (const i of f.order.slice(0, n)) cellSprites[i]!.texture = blockTexture(GREY);
+    const over = gameOver
+      ? gameOverAt(gameOver.t, gameOver.order.length, gameOver.reduceMotion)
+      : null;
+    if (over) {
+      for (const i of gameOver!.order.slice(0, over.greyed)) {
+        cellSprites[i]!.texture = blockTexture(GREY);
+      }
+      drawBanner(over);
     }
     drawGhost(drag);
-    drawTray(game, drag, dt);
+    drawTray(game, drag, dt, over);
     drawDrag(drag, dt);
     updateEffects(dt);
     app.renderer.render(app.stage);
     return true;
   }
 
-  return { canvas, resize, frame, playEffects, playGameOver, clearEffects };
+  return {
+    canvas,
+    resize,
+    frame,
+    playEffects,
+    playGameOver,
+    skipGameOver,
+    clearEffects: () => clearEffects(),
+  };
 }

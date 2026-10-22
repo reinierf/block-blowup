@@ -77,6 +77,25 @@ test('game over below the best score: no "New best!"', async ({ page }) => {
   await expect(page.locator('#new-best')).toBeHidden();
 });
 
+test('game over waits before the score screen; a tap skips the rest', async ({ page }) => {
+  await page.addInitScript((save) => {
+    localStorage.setItem('block-blowup.game', JSON.stringify(save));
+  }, nearlyOverSave(500));
+  // animate=1: the real game-over sequence (about 3.7 s for this board, longer in software
+  // WebGL), not the frozen one. The tap comes well before its end, so only a skip shows
+  // the score screen within a second of it.
+  await page.goto('./?seed=1&test=1&animate=1');
+  await page.waitForFunction(() => !!window.__blowup?.layout());
+  await continueGame(page);
+  await dragToCell(page, 0, 0, 0);
+  expect((await snapshot(page)).status).toBe('gameOver');
+  await expect(page.locator('#overlay')).toBeHidden();
+
+  const b = (await page.evaluate(() => window.__blowup!.layout()))!.board;
+  await page.mouse.click(b.x + b.size / 2, b.y + b.size / 2);
+  await expect(page.locator('#overlay')).toBeVisible({ timeout: 1000 });
+});
+
 test('settings persist across reloads', async ({ page }) => {
   await openApp(page);
   await page.click('#start-settings');

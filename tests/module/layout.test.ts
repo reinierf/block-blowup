@@ -164,7 +164,9 @@ describe('layout specifics', () => {
   it('fits the score inside its band whatever its size, never enlarging it', () => {
     // Short phone, no spare height: the tightest band (Fairphone-like, browser bars shown).
     const l = computeLayout(360, 600);
-    expect(l.score.h).toBe(LAYOUT.scoreHeight + LAYOUT.gap);
+    // The minimum band, give or take the board's whole-pixel rounding.
+    expect(l.score.h).toBeGreaterThanOrEqual(LAYOUT.scoreHeight + LAYOUT.gap);
+    expect(l.score.h).toBeLessThan(LAYOUT.scoreHeight + LAYOUT.gap + 2);
     // At least 17 px between the 62 px score and the board, even on the tightest layout.
     expect((l.score.h - 62) / 2).toBeGreaterThanOrEqual(17);
     expect(fitScale(100, 62, l.score)).toBe(1);

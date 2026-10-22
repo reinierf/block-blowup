@@ -19,10 +19,21 @@ export interface Renderer {
   frame(game: Game, drag: DragState | null, dt: number): boolean;
   /** Start the effects for a resolved turn, as decided by its feedback plan. */
   playEffects(result: TurnResult, plan: FeedbackPlan): void;
-  /** Game-over sequence (blocks fade to grey one by one); calls `onDone` when finished. */
-  playGameOver(game: Game, onDone: () => void): void;
+  /** Game-over sequence (see feedback/game-over.ts). Instant when animations are frozen. */
+  playGameOver(game: Game, cb: GameOverCallbacks): void;
+  /** Skip the running game-over sequence to its end (a tap); otherwise does nothing. */
+  skipGameOver(): void;
   /** Drop all running effects (e.g. on restart). */
   clearEffects(): void;
+}
+
+export interface GameOverCallbacks {
+  /** No wiggle or drop-in (the pause and the banner stay). */
+  reduceMotion: boolean;
+  /** The banner appears: play the game-over sound and vibration. */
+  onReveal: () => void;
+  /** The sequence is over (or skipped): show the score screen. */
+  onDone: () => void;
 }
 
 export interface RendererOptions {
