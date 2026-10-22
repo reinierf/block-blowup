@@ -300,7 +300,9 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
   score shows with the crown. Buttons are chunky, with a darker bottom edge that presses
   in on tap. The update toast uses the same panel and buttons.
 - **Update prompt:** when a new version has been downloaded, a small "Update available"
-  toast with **Reload** appears; the app never reloads by itself mid-game.
+  toast with **Reload** appears; the app never reloads by itself mid-game. Besides the
+  browser's check at launch, the app checks for a new version each time it returns to the
+  foreground (skipped while offline), so a suspended PWA still picks up deploys.
 - **Debug overlay:** `?debug` shows the seed, difficulty and the last deal's generator
   decisions (redraws, mercy, solvability, fallback, solver nodes).
 
