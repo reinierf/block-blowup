@@ -28,7 +28,8 @@ npm run coverage     # Vitest with coverage for src/game/
 npm run typecheck
 npm run lint         # ESLint + Prettier check (npm run format to fix)
 npm run e2e          # Playwright: Pixel 7, iPhone 14 (WebKit), desktop Chromium
-npm run sim          # simulation harness (Phase 1+)
+npm run sim          # simulation stats for seeds 1..300 (-- --from A --to B)
+npm run sim:update   # rewrite tests/sim-snapshot.json after an intended balance change
 ```
 
 First Playwright run on a new machine: `npx playwright install chromium webkit`.
@@ -70,6 +71,7 @@ logs a console error or throws.
 | `src/game/board.ts`             | 8×8 grid, placement validation, line clearing       |
 | `src/game/scoring.ts`           | Scoring formulas                                    |
 | `src/game/state.ts`             | Game state machine, hand management                 |
+| `src/sim/`                      | Seeded LCG, greedy bot, simulation runner, snapshot |
 | `src/render/layout.ts`          | Viewport geometry (shared by renderer + input)      |
 | `src/render/renderer.ts`        | Canvas 2D drawing (replaced by PixiJS in Phase 4)   |
 | `tests/`                        | Vitest + Playwright suites (see above)              |

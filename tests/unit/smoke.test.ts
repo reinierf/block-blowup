@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Game, GameStatus } from '../../src/game/state';
-
-/** Small deterministic LCG for tests (same one the simulation harness uses). */
-function lcg(seed: number): () => number {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 2 ** 32;
-  };
-}
+import { lcg } from '../../src/sim/lcg';
 
 describe('Game (smoke)', () => {
   it('starts a playable game with a full hand', () => {

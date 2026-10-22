@@ -28,6 +28,7 @@ export default defineConfig(({ command }) => ({
       provider: 'v8',
       include: ['src/game/**/*.ts'],
       reporter: ['text', 'html', 'lcov'],
+      thresholds: { lines: 90, branches: 90 },
     },
   },
 }));
