@@ -24,11 +24,14 @@ It is an installable PWA: open it in Chrome (Android) or Safari (iOS) and use "I
 
 ## How to play
 
-1. Drag one of the three blocks at the bottom onto the board.
-2. A **green** preview means the spot is legal; **red** means it's blocked.
-3. Fill an entire **row or column** to clear it and score points.
-4. Clear on **consecutive moves** to build a combo multiplier.
-5. The game ends when none of your remaining blocks fit anywhere.
+1. Drag one of the three blocks at the bottom onto the board. Blocks that fit nowhere are
+   greyed out.
+2. A faded copy shows where it will land; lines it would complete light up in its colour.
+3. Fill an entire **row or column** to clear it and score points; several at once score
+   much more, and emptying the whole board pays a big bonus.
+4. Keep clearing to build a **combo**: it survives up to two moves without a clear.
+5. When all three blocks are placed you get three new ones. The game ends when none of
+   your remaining blocks fit anywhere.
 
 ## Documentation
 
