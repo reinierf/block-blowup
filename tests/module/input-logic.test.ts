@@ -22,6 +22,21 @@ describe('pieceOrigin', () => {
     expect(o.x).toBe(200 - cell);
     expect(o.y).toBeCloseTo(300 - 2 * cell - INPUT.touchLiftCells * cell);
   });
+
+  it('moves the piece faster than an upward touch drag', () => {
+    const o = pieceOrigin(layout, sq, { x: 200, y: 300 }, true, 500);
+    expect(o.y).toBeCloseTo(500 - 200 * INPUT.touchUpGain - 2 * cell - INPUT.touchLiftCells * cell);
+    expect(INPUT.touchUpGain).toBeGreaterThan(1);
+  });
+
+  it('follows a downward touch drag 1:1', () => {
+    const o = pieceOrigin(layout, sq, { x: 200, y: 600 }, true, 500);
+    expect(o.y).toBeCloseTo(600 - 2 * cell - INPUT.touchLiftCells * cell);
+  });
+
+  it('does not amplify mouse drags', () => {
+    expect(pieceOrigin(layout, sq, { x: 200, y: 300 }, false, 500).y).toBe(300 - cell);
+  });
 });
 
 describe('dropTarget', () => {

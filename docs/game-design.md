@@ -215,8 +215,11 @@ that matters — if two of your three pieces still fit, you keep playing.
   grey (`Game.pieceFits`) and cannot be picked up.
 - **Lift:** a picked-up piece grows from tray size to board size over
   `INPUT.liftSeconds` (0.12 s), moving from its tray position to the pointer. With the
-  mouse it is centred on the pointer; on touch it floats `INPUT.touchLiftCells` (1.6)
+  mouse it is centred on the pointer; on touch it floats `INPUT.touchLiftCells` (2.2)
   cells above the finger so the thumb never hides it.
+- **Touch speed-up:** on touch, the piece moves `INPUT.touchUpGain` (1.25) times as far
+  as the finger above the point where the drag started, so a short swipe reaches the
+  board (like the original). Below that point, and with the mouse, it follows 1:1.
 - **Snapping** (`dropTarget` in `src/input-logic.ts`): the piece's top-left snaps to the
   nearest cell when the piece is over the board or overhangs it by at most half a cell
   (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and

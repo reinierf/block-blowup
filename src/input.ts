@@ -15,6 +15,8 @@ export interface DragState {
   color: string;
   pointerId: number;
   isTouch: boolean;
+  /** Pointer y (CSS px) where the drag started. */
+  startY: number;
   /** Top-left of the floating piece, in CSS px. */
   originX: number;
   originY: number;
@@ -48,7 +50,7 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
   function move(d: DragState, point: Point): void {
     const layout = getLayout();
     if (!layout) return;
-    const origin = pieceOrigin(layout, d.shape, point, d.isTouch);
+    const origin = pieceOrigin(layout, d.shape, point, d.isTouch, d.startY);
     d.originX = origin.x;
     d.originY = origin.y;
     const game = getGame();
@@ -81,6 +83,7 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
       color: piece.color,
       pointerId: e.pointerId,
       isTouch: e.pointerType === 'touch',
+      startY: point.y,
       originX: 0,
       originY: 0,
       target: null,

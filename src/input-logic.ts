@@ -7,7 +7,12 @@ import type { Layout } from './render/layout';
 
 export const INPUT = {
   /** On touch, the piece floats this many board cells above the finger (tune on a phone). */
-  touchLiftCells: 1.6,
+  touchLiftCells: 2.2,
+  /**
+   * On touch, upward finger movement (from where the drag started) moves the piece this
+   * many times as far, so it reaches the board with a shorter swipe. Downward is 1:1.
+   */
+  touchUpGain: 1.25,
   /** Seconds for a picked-up piece to grow from tray size to board size. */
   liftSeconds: 0.12,
   /**
@@ -22,15 +27,24 @@ export interface Point {
   y: number;
 }
 
-/** Top-left of the dragged piece (board-cell sized) for a pointer position. */
-export function pieceOrigin(layout: Layout, shape: Shape, pointer: Point, isTouch: boolean): Point {
+/**
+ * Top-left of the dragged piece (board-cell sized) for a pointer position. `startY` is the
+ * pointer's y where the drag began; on touch, movement above it is amplified.
+ */
+export function pieceOrigin(
+  layout: Layout,
+  shape: Shape,
+  pointer: Point,
+  isTouch: boolean,
+  startY = pointer.y,
+): Point {
   const cell = layout.board.cell;
   const w = shape.width * cell;
   const h = shape.height * cell;
-  return {
-    x: pointer.x - w / 2,
-    y: isTouch ? pointer.y - h - cell * INPUT.touchLiftCells : pointer.y - h / 2,
-  };
+  if (!isTouch) return { x: pointer.x - w / 2, y: pointer.y - h / 2 };
+  const dy = pointer.y - startY;
+  const y = startY + (dy < 0 ? dy * INPUT.touchUpGain : dy);
+  return { x: pointer.x - w / 2, y: y - h - cell * INPUT.touchLiftCells };
 }
 
 /**
