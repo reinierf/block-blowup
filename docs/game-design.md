@@ -90,12 +90,17 @@ Scoring formulas live in `src/game/scoring.ts`; every tunable number lives in
 
 3. **Combo multiplier** — `comboMultiplier(combo) = 1 + 0.5 * (combo - 1)`
 
-   The combo counter increments on every placement that clears at least one line, and
-   **resets to 0 on any placement that clears nothing**. So:
-   - Clear on two consecutive moves → 2nd clear gets ×1.5.
-   - Three in a row → ×2.0, and so on.
+   The combo counter increments on every placement that clears at least one line. A
+   placement that clears nothing does **not** break the streak straight away: the game
+   counts misses in `movesSinceClear`, and the combo resets to 0 only when that reaches
+   `COMBO_GRACE` (3), i.e. on the third non-clearing placement in a row. Any clear resets
+   `movesSinceClear` to 0. So:
+   - Clear, miss, miss, clear → the second clear is combo 2 (×1.5).
+   - Clear, miss, miss, miss → combo back to 0; the next clear starts again at 1.
 
-   `bestCombo` records the longest streak achieved this run.
+   The streak therefore survives roughly one hand without a clear, like the original.
+   `bestCombo` records the longest streak achieved this run. Both `combo` and
+   `movesSinceClear` are reported in every turn result.
 
 ## 6. Game over
 

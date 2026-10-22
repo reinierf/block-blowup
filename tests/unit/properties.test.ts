@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { COMBO_GRACE } from '../../src/game/config';
 import { Game, GameStatus } from '../../src/game/state';
 import { lcg } from '../../src/sim/lcg';
 
@@ -33,6 +34,7 @@ function playRandomGame(gameSeed: number, moveSeed: number, maxMoves: number): v
     const [i, ox, oy] = moves[Math.floor(pick() * moves.length)]!;
     const prevScore = game.score;
     const prevCombo = game.combo;
+    const prevMisses = game.movesSinceClear;
 
     const r = game.placeAt(i, ox, oy)!;
     expect(r).not.toBeNull();
@@ -42,8 +44,17 @@ function playRandomGame(gameSeed: number, moveSeed: number, maxMoves: number): v
     // The score never decreases, and grows by exactly the turn's points.
     expect(r.points).toBeGreaterThan(0);
     expect(game.score).toBe(prevScore + r.points);
-    // Combo (current fork rule): +1 on a clearing move, reset to 0 otherwise.
-    expect(game.combo).toBe(r.lines > 0 ? prevCombo + 1 : 0);
+    // Combo grace rule: +1 on a clearing move; otherwise unchanged until COMBO_GRACE misses
+    // in a row, then 0.
+    if (r.lines > 0) {
+      expect(game.combo).toBe(prevCombo + 1);
+      expect(game.movesSinceClear).toBe(0);
+    } else {
+      expect(game.movesSinceClear).toBe(prevMisses + 1);
+      expect(game.combo).toBe(game.movesSinceClear >= COMBO_GRACE ? 0 : prevCombo);
+    }
+    expect(r.combo).toBe(game.combo);
+    expect(r.movesSinceClear).toBe(game.movesSinceClear);
     expect(game.bestCombo).toBeGreaterThanOrEqual(game.combo);
     // Game over exactly when no hand piece fits.
     expect(r.gameOver).toBe(isOver(game));

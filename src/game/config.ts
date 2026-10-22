@@ -11,6 +11,12 @@ export const PLACE_POINTS_PER_CELL = 1;
  */
 export const LINE_POINTS: readonly number[] = [0, 10, 40, 90, 160];
 
+/**
+ * Placements in a row without a clear before the combo resets. With 3, the streak survives
+ * roughly one hand of misses, like the original.
+ */
+export const COMBO_GRACE = 3;
+
 /** Combo multiplier for a clear on combo streak `combo` (1 = first clear, no bonus). */
 export function comboMultiplierFor(combo: number): number {
   return 1 + 0.5 * Math.max(0, combo - 1);

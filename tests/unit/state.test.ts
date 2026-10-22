@@ -78,6 +78,7 @@ describe('Game: placement', () => {
       cols: [],
       lines: 0,
       combo: 0,
+      movesSinceClear: 1,
       points: 4,
       gameOver: false,
     });
@@ -145,35 +146,55 @@ describe('Game: placement', () => {
   });
 });
 
-describe('Game: combo (current fork behaviour)', () => {
-  it('builds on consecutive clears and resets on the first non-clearing move', () => {
-    const rows = [
-      '.#######',
-      '.#######',
-      '.#######',
-      '........',
-      '........',
-      '........',
-      '........',
-      '........',
-    ];
-    const g = setup(rows, ['single', 'single', 'single']);
-
-    const r1 = g.placeAt(0, 0, 0)!;
-    expect([r1.combo, r1.points]).toEqual([1, 1 + 10]);
-    const r2 = g.placeAt(1, 0, 1)!;
-    expect([r2.combo, r2.points]).toEqual([2, 1 + 15]);
-    const r3 = g.placeAt(2, 0, 2)!;
-    expect([r3.combo, r3.points]).toEqual([3, 1 + 20]);
-    expect(g.bestCombo).toBe(3);
-
-    // The hand was refilled after the third placement; replace it to control the next move.
+describe('Game: combo with a grace window (COMBO_GRACE = 3)', () => {
+  /** Place a single at (x, y), giving the game a fresh one-piece hand first. */
+  function single(g: Game, x: number, y: number) {
     g.hand = [{ uid: 1, shape: shape('single'), color: 'x' }, null, null];
-    const r4 = g.placeAt(0, 4, 4)!;
-    expect([r4.combo, r4.points]).toEqual([0, 1]);
-    expect(g.combo).toBe(0);
+    const r = g.placeAt(0, x, y)!;
+    return { combo: r.combo, movesSinceClear: r.movesSinceClear, points: r.points };
+  }
+
+  const rows = [
+    '.#######',
+    '.#######',
+    '.#######',
+    '.#######',
+    '........',
+    '........',
+    '........',
+    '........',
+  ];
+
+  it('builds on consecutive clears', () => {
+    const g = setup(rows, []);
+    expect(single(g, 0, 0)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 10 });
+    expect(single(g, 0, 1)).toEqual({ combo: 2, movesSinceClear: 0, points: 1 + 15 });
+    expect(single(g, 0, 2)).toEqual({ combo: 3, movesSinceClear: 0, points: 1 + 20 });
     expect(g.bestCombo).toBe(3);
-    expect(g.score).toBe(11 + 16 + 21 + 1);
+  });
+
+  it('survives up to two misses, and a clear within the window extends the streak', () => {
+    const g = setup(rows, []);
+    single(g, 0, 0);
+    single(g, 0, 1);
+    single(g, 0, 2);
+    expect(single(g, 4, 5)).toEqual({ combo: 3, movesSinceClear: 1, points: 1 });
+    expect(single(g, 5, 5)).toEqual({ combo: 3, movesSinceClear: 2, points: 1 });
+    expect(single(g, 0, 3)).toEqual({ combo: 4, movesSinceClear: 0, points: 1 + 25 });
+    expect(g.bestCombo).toBe(4);
+  });
+
+  it('resets on the third miss in a row', () => {
+    const g = setup(rows, []);
+    single(g, 0, 0);
+    single(g, 0, 1);
+    expect(single(g, 4, 6)).toEqual({ combo: 2, movesSinceClear: 1, points: 1 });
+    expect(single(g, 5, 6)).toEqual({ combo: 2, movesSinceClear: 2, points: 1 });
+    expect(single(g, 6, 6)).toEqual({ combo: 0, movesSinceClear: 3, points: 1 });
+    expect(single(g, 7, 6)).toEqual({ combo: 0, movesSinceClear: 4, points: 1 });
+    // The next clear starts a new streak at 1.
+    expect(single(g, 0, 2)).toEqual({ combo: 1, movesSinceClear: 0, points: 1 + 10 });
+    expect(g.bestCombo).toBe(2);
   });
 });
 

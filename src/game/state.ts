@@ -4,6 +4,7 @@
 
 import { Board } from './board';
 import { SHAPES, PieceBag, colorFor, type Rng, type Shape } from './pieces';
+import { COMBO_GRACE } from './config';
 import { placementPoints, lineClearPoints } from './scoring';
 
 export const GameStatus = Object.freeze({
@@ -30,7 +31,10 @@ export interface TurnResult {
   rows: number[];
   cols: number[];
   lines: number;
+  /** Combo streak after this move (still alive during the grace window). */
   combo: number;
+  /** Placements since the last clear (0 if this move cleared). */
+  movesSinceClear: number;
   points: number;
   gameOver: boolean;
 }
@@ -51,6 +55,8 @@ export class Game {
   hand: (HandPiece | null)[] = [null, null, null];
   score = 0;
   combo = 0;
+  /** Placements in a row without a clear; the combo resets when this reaches COMBO_GRACE. */
+  movesSinceClear = 0;
   bestCombo = 0;
   status: GameStatus = GameStatus.PLAYING;
 
@@ -67,6 +73,7 @@ export class Game {
     this.hand = [null, null, null];
     this.score = 0;
     this.combo = 0;
+    this.movesSinceClear = 0;
     this.bestCombo = 0;
     this.status = GameStatus.PLAYING;
     this.dealHand();
@@ -109,12 +116,14 @@ export class Game {
 
     if (lines > 0) {
       this.combo += 1;
+      this.movesSinceClear = 0;
       if (this.combo > this.bestCombo) this.bestCombo = this.combo;
       clearedCells = this.collectLineCells(rows, cols); // capture colors BEFORE clearing
       points += lineClearPoints(lines, this.combo);
       this.board.clearLines(rows, cols);
     } else {
-      this.combo = 0;
+      this.movesSinceClear += 1;
+      if (this.movesSinceClear >= COMBO_GRACE) this.combo = 0;
     }
 
     this.score += points;
@@ -131,6 +140,7 @@ export class Game {
       cols,
       lines,
       combo: this.combo,
+      movesSinceClear: this.movesSinceClear,
       points,
       gameOver: this.status === GameStatus.GAME_OVER,
     };
