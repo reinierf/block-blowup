@@ -1,11 +1,23 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { completesALine, fitsAnywhere, rowsFromBoard } from '../../src/game/bitboard';
-import { DEAL_NODE_BUDGET, FAMILY_WEIGHTS, MAX_REDRAWS, MERCY_BOOST } from '../../src/game/config';
-import { Generator, shapeWeights } from '../../src/game/generator';
+import {
+  completesALine,
+  fitsAnywhere,
+  maxLinesCleared,
+  rowsFromBoard,
+} from '../../src/game/bitboard';
+import {
+  ASSIST_HAND_FROM,
+  DEAL_NODE_BUDGET,
+  FAMILY_WEIGHTS,
+  MAX_REDRAWS,
+  MERCY_BOOST,
+} from '../../src/game/config';
+import { difficultyFor } from '../../src/game/difficulty';
+import { Generator, shapeWeights, type GeneratorOptions } from '../../src/game/generator';
 import { PIECE_COLORS, SHAPES, type ShapeFamily } from '../../src/game/pieces';
 import { Mulberry32 } from '../../src/game/rng';
-import { canPlaceAll } from '../../src/game/solver';
+import { canPlaceAll, searchHand } from '../../src/game/solver';
 import { boardFrom, shape } from '../helpers/boards';
 import { arbBoard } from '../helpers/random-boards';
 
@@ -23,6 +35,8 @@ const CHECKER = rowsFromBoard(
   ]),
 );
 const ctx = { score: 0, handsWithoutClear: 0 };
+const assistOff: GeneratorOptions = { assistChance: () => ({ p: 0, reason: 'base' }) };
+const assistOn: GeneratorOptions = { assistChance: () => ({ p: 1, reason: 'base' }) };
 
 function familyShare(difficulty: number, families: ShapeFamily[]): number {
   const w = shapeWeights(difficulty);
@@ -254,7 +268,8 @@ describe('mercy rule', () => {
 
   it(`boosts line-completing pieces about ${MERCY_BOOST}×`, () => {
     const share = (handsWithoutClear: number) => {
-      const g = new Generator(new Mulberry32(9).next);
+      // The assist would also deal line-completing pieces: measure the mercy rule alone.
+      const g = new Generator(new Mulberry32(9).next, SHAPES, assistOff);
       let completing = 0;
       let total = 0;
       for (let i = 0; i < 600; i++) {
@@ -269,5 +284,149 @@ describe('mercy rule', () => {
     const mercy = share(2);
     expect(calm).toBeLessThan(0.4);
     expect(mercy).toBeGreaterThan(calm * 1.6);
+  });
+});
+
+describe('assist', () => {
+  // Row 0 is two cells short at the right edge (see the mercy rule tests).
+  const nearLine = rowsFromBoard(boardFrom(['######..', ...Array<string>(7).fill('........')]));
+  // Rows 0 and 1 both two short: square2 (and some others) clear 2 lines, line2-h clears 1.
+  const nearTwo = rowsFromBoard(
+    boardFrom(['######..', '######..', ...Array<string>(6).fill('........')]),
+  );
+  const HARD = 1e6; // score at difficulty 1
+
+  it('below ASSIST_HAND_FROM, deals a piece that clears whenever one exists (property)', () => {
+    fc.assert(
+      fc.property(arbBoard, fc.nat(2 ** 31), fc.nat(4000), (board, seed, score) => {
+        expect(difficultyFor(score)).toBeLessThan(ASSIST_HAND_FROM);
+        const rows = rowsFromBoard(board);
+        const { shapes, info } = new Generator(new Mulberry32(seed).next, SHAPES, assistOn).deal(
+          rows,
+          { score, handsWithoutClear: 0 },
+        );
+        const weights = shapeWeights(info.difficulty);
+        const possible = SHAPES.some((s, i) => weights[i]! > 0 && completesALine(rows, s));
+        expect(info.assist).toBe(true);
+        expect(info.assistMode).toBe(possible ? 'piece' : 'none');
+        if (possible) expect(shapes.some((s) => completesALine(rows, s))).toBe(true);
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  it('from ASSIST_HAND_FROM, deals a hand that can clear in some order, or falls back (property)', () => {
+    fc.assert(
+      fc.property(arbBoard, fc.nat(2 ** 31), (board, seed) => {
+        const rows = rowsFromBoard(board);
+        const { shapes, info } = new Generator(new Mulberry32(seed).next, SHAPES, assistOn).deal(
+          rows,
+          { score: HARD, handsWithoutClear: 0 },
+        );
+        const goal = { placeAll: info.requireSolvable, clear: true };
+        if (info.assistMode === 'hand') {
+          expect(searchHand(rows, shapes, 1e9, goal).found).toBe(true);
+          expect(info.solvable).toBe(info.requireSolvable ? true : null);
+        } else if (info.assistMode === 'pieceFallback') {
+          expect(shapes.some((s) => completesALine(rows, s))).toBe(true);
+        } else {
+          // No dealable piece clears anything (the single isn't dealt at difficulty 1).
+          expect(info.assistMode).toBe('none');
+          const weights = shapeWeights(1);
+          expect(SHAPES.some((s, i) => weights[i]! > 0 && completesALine(rows, s))).toBe(false);
+        }
+        expect(info.solverNodes).toBeLessThanOrEqual(DEAL_NODE_BUDGET);
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  it('at high difficulty mostly helps with natural hands, not a handed-out piece', () => {
+    const g = new Generator(new Mulberry32(5).next, SHAPES, assistOn);
+    const modes = Array.from(
+      { length: 200 },
+      () => g.deal(nearLine, { score: HARD, handsWithoutClear: 0 }).info.assistMode,
+    );
+    expect(modes.filter((m) => m === 'hand').length).toBeGreaterThan(150);
+    expect(modes.every((m) => m === 'hand' || m === 'pieceFallback')).toBe(true);
+  });
+
+  it('never helps when the roll misses', () => {
+    const g = new Generator(new Mulberry32(6).next, SHAPES, assistOff);
+    for (let i = 0; i < 50; i++) {
+      for (const score of [0, HARD]) {
+        expect(g.deal(nearLine, { score, handsWithoutClear: 0 }).info).toMatchObject({
+          assist: false,
+          assistMode: 'none',
+          assistP: 0,
+        });
+      }
+    }
+  });
+
+  it('always consumes the roll: with nothing to help, on and off deal the same hands', () => {
+    // Nothing on an empty board clears with one piece, and below ASSIST_HAND_FROM no
+    // whole-hand search runs.
+    const names = (options: GeneratorOptions) => {
+      const g = new Generator(new Mulberry32(7).next, SHAPES, options);
+      return Array.from({ length: 30 }, () => g.deal(EMPTY, ctx).shapes.map((s) => s.name));
+    };
+    expect(names(assistOn)).toEqual(names(assistOff));
+  });
+
+  it('puts the helper piece in any slot equally often', () => {
+    const g = new Generator(new Mulberry32(8).next, SHAPES, assistOn);
+    const slots = [0, 0, 0];
+    for (let i = 0; i < 3000; i++) {
+      const { shapes } = g.deal(nearLine, ctx);
+      const hits = shapes.map((s) => completesALine(nearLine, s));
+      // With exactly one clearing piece in the hand, that piece is the helper.
+      if (hits.filter(Boolean).length === 1) slots[hits.indexOf(true)]!++;
+    }
+    const total = slots[0]! + slots[1]! + slots[2]!;
+    expect(total).toBeGreaterThan(1000);
+    for (const n of slots) expect(n / total).toBeGreaterThan(0.3);
+    for (const n of slots) expect(n / total).toBeLessThan(0.37);
+  });
+
+  it('favours multi-line helpers by lines ^ generosity at difficulty 0', () => {
+    const lines = SHAPES.map((s) => maxLinesCleared(nearTwo, s));
+    const w = shapeWeights(0);
+    const helper = w.map((x, i) => (lines[i]! > 0 ? x * lines[i]! ** 1.5 : 0));
+    const total = helper.reduce((a, b) => a + b, 0);
+    const expected = helper.reduce((a, x, i) => a + (lines[i] === 2 ? x : 0), 0) / total;
+
+    const g = new Generator(new Mulberry32(10).next, SHAPES, assistOn);
+    let twoLine = 0;
+    let seen = 0;
+    for (let i = 0; i < 3000; i++) {
+      const { shapes } = g.deal(nearTwo, ctx);
+      const hits = shapes.filter((s) => lines[s.id]! > 0);
+      if (hits.length !== 1) continue;
+      seen++;
+      if (lines[hits[0]!.id] === 2) twoLine++;
+    }
+    expect(expected).toBeGreaterThan(0.3);
+    expect(twoLine / seen).toBeGreaterThan(expected - 0.05);
+    expect(twoLine / seen).toBeLessThan(expected + 0.05);
+  });
+
+  it('reports the chance and its reason from the deal context', () => {
+    const { info } = new Generator(new Mulberry32(1).next).deal(nearLine, {
+      score: HARD,
+      handsWithoutClear: 0,
+      combo: 2,
+    });
+    expect(info.assistP).toBeCloseTo(0.45);
+    expect(info.assistReason).toBe('combo');
+  });
+
+  it('helps on about pAssist of deals', () => {
+    const g = new Generator(new Mulberry32(11).next);
+    const deals = Array.from({ length: 1000 }, () => g.deal(nearLine, ctx).info);
+    const hit = deals.filter((d) => d.assist).length;
+    expect(hit).toBeGreaterThan(550); // expected 600 at difficulty 0
+    expect(hit).toBeLessThan(650);
+    expect(deals.filter((d) => d.assist).every((d) => d.assistMode === 'piece')).toBe(true);
   });
 });

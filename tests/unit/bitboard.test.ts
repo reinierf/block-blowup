@@ -5,6 +5,7 @@ import {
   completesALine,
   filledCount,
   fitsAnywhere,
+  maxLinesCleared,
   placeRows,
   rowsFromBoard,
   shapeMasks,
@@ -77,5 +78,25 @@ describe('bitboard', () => {
     expect(fitsAnywhere(rows, shape('square2'))).toBe(false);
     expect(completesALine(rows, shape('single'))).toBe(true);
     expect(completesALine(rows, shape('line2-h'))).toBe(false);
+  });
+
+  it('maxLinesCleared counts the most lines one placement clears', () => {
+    const rows = rowsFromBoard(
+      boardFrom(['######..', '######..', ...Array<string>(6).fill('........')]),
+    );
+    expect(maxLinesCleared(rows, shape('square2'))).toBe(2);
+    expect(maxLinesCleared(rows, shape('line2-h'))).toBe(1);
+    expect(maxLinesCleared(rows, shape('single'))).toBe(0);
+    expect(maxLinesCleared(rows, shape('line5-h'))).toBe(0);
+  });
+
+  it('maxLinesCleared > 0 exactly when completesALine (property)', () => {
+    fc.assert(
+      fc.property(arbBoard, fc.constantFrom(...SHAPES), (board, s) => {
+        const rows = rowsFromBoard(board);
+        expect(maxLinesCleared(rows, s) > 0).toBe(completesALine(rows, s));
+      }),
+      { numRuns: 300 },
+    );
   });
 });

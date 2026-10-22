@@ -107,3 +107,30 @@ export const MERCY_FILL = 0.6;
 export const MERCY_HANDS = 2;
 /** Mercy rule: weight multiplier for pieces that would complete at least one line. */
 export const MERCY_BOOST = 4;
+
+// --- Assist (generator.ts) -------------------------------------------------------------
+
+/** Chance that a deal is forced to offer a line clear, at difficulty 0 and 1; linear between. */
+export const ASSIST_BASE: readonly [easy: number, hard: number] = [0.6, 0.15];
+/** Board fill fraction from which the fill term starts adding to the assist chance. */
+export const ASSIST_FILL_FROM = 0.5;
+/** Extra assist chance at a full board; linear from ASSIST_FILL_FROM. */
+export const ASSIST_FILL_GAIN = 0.6;
+/** Extra assist chance per hand in a row without a clear. */
+export const ASSIST_DROUGHT_GAIN = 0.2;
+/** Extra assist chance while a combo streak is running, to help keep it alive. */
+export const ASSIST_COMBO_GAIN = 0.3;
+/** Upper bound on the assist chance. */
+export const ASSIST_MAX = 0.9;
+/**
+ * Exponent on lines cleared when picking the helper piece, at difficulty 0 and 1. Above 0,
+ * pieces that clear more lines at once are favoured.
+ */
+export const ASSIST_GENEROSITY: readonly [easy: number, hard: number] = [1.5, 0];
+/**
+ * Difficulty from which the assist first looks for a natural hand that can clear a line
+ * when played in some order (subtler help), before handing out a single clearing piece.
+ */
+export const ASSIST_HAND_FROM = 0.5;
+/** Natural hands tried for whole-hand help before falling back to a single clearing piece. */
+export const ASSIST_HAND_TRIES = 8;

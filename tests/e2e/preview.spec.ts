@@ -2,9 +2,9 @@ import { test, expect } from './fixtures';
 import { dragFromSlot, layout, openGame, playFirstFit, snapshot } from './helpers';
 
 test('a tray piece that fits nowhere is greyed out and cannot be dragged', async ({ page }) => {
-  // Seed 808 under the first-fit policy: after 10 moves, slot 1 (square3) fits nowhere while
+  // Seed 2020 under the first-fit policy: after 10 moves, slot 1 (square3) fits nowhere while
   // the game goes on (found with the generator in Node; same logic runs in the browser).
-  await openGame(page, 808);
+  await openGame(page, 2020);
   await playFirstFit(page, 10);
   const before = await snapshot(page);
   expect(before.status).toBe('playing');

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { ASSIST_COMBO_GAIN } from '../../src/game/config';
+import { assistChance } from '../../src/game/difficulty';
 import { Game, GameStatus } from '../../src/game/state';
 import { lcg } from '../../src/sim/lcg';
 import { boardToAscii, shape } from '../helpers/boards';
@@ -313,6 +315,25 @@ describe('Game: hand refill and game over', () => {
     expect(r.deal).toBe(g.lastDeal);
     expect(r.deal).toMatchObject({ requireSolvable: true, solvable: true, mercy: false });
     expect(r.deal!.difficulty).toBeCloseTo(0.0004); // score 3 on the difficulty curve
+  });
+
+  it('passes the running combo to the generator, for the assist', () => {
+    const calm = setup(EMPTY, ['single', 'single', 'single']);
+    calm.placeAt(0, 0, 0);
+    calm.placeAt(1, 2, 0);
+    // No clear in that hand: base 0.6 + drought 0.2.
+    expect(calm.placeAt(2, 4, 0)!.deal!.assistP).toBeCloseTo(0.8);
+
+    const g = setup(bottomRowGap(1), ['single', 'single', 'single']);
+    g.placeAt(0, 0, 7); // completes row 7: combo 1
+    g.placeAt(1, 2, 0);
+    const r = g.placeAt(2, 4, 0)!;
+    expect(r.combo).toBe(1);
+    // A clear in that hand (it empties the board, so the all-clear bonus lifts difficulty a
+    // little), combo running: the combo term is added on top of the base.
+    const { difficulty } = r.deal!;
+    const noCombo = assistChance({ difficulty, fill: 2 / 64, handsWithoutClear: 0, combo: 0 });
+    expect(r.deal!.assistP - noCombo.p).toBeCloseTo(ASSIST_COMBO_GAIN);
   });
 
   it('counts hands in a row without a clear, for the mercy rule', () => {

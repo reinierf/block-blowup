@@ -49,6 +49,11 @@ if (process.argv.includes('--update')) {
   console.log(`  Redraws per deal:         ${r(s.redrawsPerDeal, 3)}`);
   console.log(`  Mercy rule fired:         ${r(100 * s.mercyRate)}% of deals`);
   console.log(`  Fallbacks:                ${r(100 * s.fallbackRate, 2)}% of deals`);
+  console.log(
+    `  Assist:                   chance ${r(100 * s.avgAssistP)}% avg, helped ${r(100 * s.assistRate)}% of deals` +
+      ` (piece ${r(100 * s.assistPieceRate)}%, hand ${r(100 * s.assistHandRate)}%,` +
+      ` piece after hand ${r(100 * s.assistPieceFallbackRate)}%)`,
+  );
 
   // Deal latency on realistic boards (best of 3 per board, after a warm-up).
   const inputs = collectDealInputs(30);

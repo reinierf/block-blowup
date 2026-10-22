@@ -89,8 +89,34 @@ Every number below lives in `src/game/config.ts`.
 - **Mercy rule:** if the board is more than `MERCY_FILL` (60%) full, or `MERCY_HANDS` (2)
   hands in a row had no clear (`Game.handsWithoutClear`), every shape that could complete
   at least one line on the current board gets `MERCY_BOOST` (×4) weight.
+- **Assist:** each deal rolls whether the hand must offer a line clear. The chance
+  (`assistChance` in `src/game/difficulty.ts`) is the sum of four terms, capped at
+  `ASSIST_MAX` (0.9):
+  - base: 0.6 at d=0 falling to 0.15 at d=1 (`ASSIST_BASE`);
+  - fill: up to +0.6 as the board fills from half to full (`ASSIST_FILL_FROM`,
+    `ASSIST_FILL_GAIN`);
+  - drought: +0.2 per hand without a clear (`ASSIST_DROUGHT_GAIN`);
+  - combo: +0.3 while a combo streak is running (`ASSIST_COMBO_GAIN`), to help keep it alive.
+
+  The roll is always consumed. On a hit:
+  - Below `ASSIST_HAND_FROM` (d < 0.5) one piece that clears a line is dealt, in a
+    random slot. It is picked by its normal weight × (most lines it clears at once) ^
+    generosity, which goes from 1.5 at d=0 to 0 at d=1 (`ASSIST_GENEROSITY`), so early
+    hands favour pieces that clear two lines. The other two pieces are drawn normally, and
+    the hand still goes through the fairness rules.
+  - From d = 0.5 up the help is subtler: up to `ASSIST_HAND_TRIES` (8) normal hands are
+    drawn, and the first that can clear a line when played in some order is accepted, even
+    when it takes one piece to set up another. When the soft rule applies, the same search
+    (`searchHand` in `src/game/solver.ts`) also requires the whole hand to be placeable.
+    These searches share the deal's node budget. If no such hand turns up, the
+    single-piece help above is used instead.
+  - If no dealable piece clears anything on the board, the assist doesn't help.
+
+  The assist works on top of the mercy rule, which still boosts weights on its own terms.
+
 - **Reporting:** each deal's decisions (`DealInfo`: difficulty, redraws, mercy and its
-  reason, whether solvability was required and proven, fallback, solver nodes) are in
+  reason, whether solvability was required and proven, fallback, solver nodes, the
+  assist's chance, reason, roll and mode) are in
   `Game.lastDeal` and in the turn result's `deal` field when a move triggered a new hand.
 - **Speed:** the solver and generator work on packed 8×8 bitboards
   (`src/game/bitboard.ts`). Measured in Node on a desktop: p50 0.007 ms, p99 0.02 ms per
@@ -171,7 +197,7 @@ renderers drive all effects from it and never recompute rules.
 - The all-clear bonus (300 × multiplier) is our own guess; the recording had no board clear.
 - Praise words and thresholds as above. Single-line clears get no word.
 - Generator: the difficulty curve, family weights, `P_SOLVABLE_HARD` = 0.7,
-  `MERCY_FILL` = 0.6, `MERCY_HANDS` = 2, `MERCY_BOOST` = 4.
+  `MERCY_FILL` = 0.6, `MERCY_HANDS` = 2, `MERCY_BOOST` = 4, and every `ASSIST_*` value.
 
 ## 6. Game over
 

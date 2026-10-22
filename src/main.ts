@@ -263,6 +263,9 @@ function updateDebug(): void {
     d
       ? `solvable ${d.requireSolvable ? d.solvable : 'not required'}, fallback ${d.fallback}, nodes ${d.solverNodes}`
       : '',
+    d
+      ? `assist ${d.assistP.toFixed(2)} (${d.assistReason}): ${d.assist ? d.assistMode : 'no roll'}`
+      : '',
     `combo ${game.combo} (misses ${game.movesSinceClear}), dry hands ${game.handsWithoutClear}`,
   ]
     .filter(Boolean)

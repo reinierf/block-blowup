@@ -173,3 +173,19 @@ export function completesALine(rows: Rows, shape: Shape): boolean {
   }
   return false;
 }
+
+/** The most lines `shape` can clear in one placement (0 if it completes none, or fits nowhere). */
+export function maxLinesCleared(rows: Rows, shape: Shape): number {
+  const [lo, hi] = packRows(rows);
+  const p = placements(shape);
+  const out = new Int32Array(3);
+  let best = 0;
+  for (let i = 0; i < p.length; i += 2) {
+    const plo = p[i]!;
+    const phi = p[i + 1]!;
+    if ((plo & lo) !== 0 || (phi & hi) !== 0) continue;
+    clearPacked(lo | plo, hi | phi, out);
+    if (out[2]! > best) best = out[2]!;
+  }
+  return best;
+}

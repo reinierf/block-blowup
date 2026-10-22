@@ -37,6 +37,12 @@ export interface GameStats {
   redraws: number;
   /** Deals where the mercy rule boosted line-completing pieces. */
   mercyDeals: number;
+  /** Sum of the assist chance over all deals. */
+  assistPSum: number;
+  /** Deals where the assist helped, by how (see AssistMode). */
+  assistPiece: number;
+  assistHand: number;
+  assistPieceFallback: number;
   /** Deals that fell back: accepted an unsolvable hand / swapped in the smallest piece. */
   acceptedUnsolvable: number;
   swappedSmallest: number;
@@ -65,6 +71,14 @@ export interface BatchStats {
   mercyRate: number;
   /** Fraction of deals that needed a fallback. */
   fallbackRate: number;
+  /** Fraction of deals where the assist helped (any mode). */
+  assistRate: number;
+  /** Fraction of deals helped with a single clearing piece / a whole hand / the fallback piece. */
+  assistPieceRate: number;
+  assistHandRate: number;
+  assistPieceFallbackRate: number;
+  /** Average assist chance over all deals. */
+  avgAssistP: number;
 }
 
 /** Safety cap so a balance bug can't hang the harness. */
@@ -116,6 +130,10 @@ export function playGame(seed: number): GameStats {
     deals: deals.length,
     redraws: deals.reduce((n, d) => n + d.redraws, 0),
     mercyDeals: deals.filter((d) => d.mercy).length,
+    assistPSum: deals.reduce((n, d) => n + d.assistP, 0),
+    assistPiece: deals.filter((d) => d.assistMode === 'piece').length,
+    assistHand: deals.filter((d) => d.assistMode === 'hand').length,
+    assistPieceFallback: deals.filter((d) => d.assistMode === 'pieceFallback').length,
     acceptedUnsolvable: deals.filter((d) => d.fallback === 'acceptedUnsolvable').length,
     swappedSmallest: deals.filter((d) => d.fallback === 'swappedSmallest').length,
     log,
@@ -147,6 +165,11 @@ export function summarize(games: readonly GameStats[]): BatchStats {
     redrawsPerDeal: sum((g) => g.redraws) / deals,
     mercyRate: sum((g) => g.mercyDeals) / deals,
     fallbackRate: sum((g) => g.acceptedUnsolvable + g.swappedSmallest) / deals,
+    assistRate: sum((g) => g.assistPiece + g.assistHand + g.assistPieceFallback) / deals,
+    assistPieceRate: sum((g) => g.assistPiece) / deals,
+    assistHandRate: sum((g) => g.assistHand) / deals,
+    assistPieceFallbackRate: sum((g) => g.assistPieceFallback) / deals,
+    avgAssistP: sum((g) => g.assistPSum) / deals,
   };
 }
 

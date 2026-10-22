@@ -24,6 +24,7 @@ export interface SimSnapshot {
   redrawsPerDeal: number;
   mercyRate: number;
   fallbackRate: number;
+  assistRate: number;
 }
 
 type Metric = Exclude<keyof SimSnapshot, 'seeds'>;
@@ -44,6 +45,7 @@ export const TOLERANCES: Record<Metric, { rel?: number; abs?: number }> = {
   redrawsPerDeal: { abs: 0.05 },
   mercyRate: { abs: 0.02 },
   fallbackRate: { abs: 0.01 },
+  assistRate: { abs: 0.03 },
 };
 
 const round = (x: number, d = 4) => Math.round(x * 10 ** d) / 10 ** d;
@@ -65,6 +67,7 @@ export function toSnapshot(stats: BatchStats): SimSnapshot {
     redrawsPerDeal: round(stats.redrawsPerDeal),
     mercyRate: round(stats.mercyRate),
     fallbackRate: round(stats.fallbackRate),
+    assistRate: round(stats.assistRate),
   };
 }
 

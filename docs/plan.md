@@ -224,8 +224,48 @@ Public repo, so Actions minutes are free; still trimmed to keep runs fast and qu
 - A diagonal fits a checkerboard of single holes, so the "never deals a dead hand" state
   test now accepts a single or a diagonal.
 - Every seed deals differently, so the sim snapshot and seed-1 pin were regenerated and
-  the seeded e2e scenarios re-found: the 2-line clear moved from seed 67 to 83 (seeds 92 and 808
-  still work).
+  the seeded e2e scenarios re-found: the 2-line clear moved from seed 67 to 83 (seeds 92
+  and 808 still work).
+
+## Assist (2026-10-22)
+
+The generator can now force a hand to offer a line clear. The chance falls with difficulty
+and rises with need (fill, drought, running combo). Below difficulty 0.5 the help is one
+clearing piece; from 0.5 up it is a normal hand that can clear when played in some order,
+found with the solver within the deal's budget, with the single piece as fallback. See
+`docs/game-design.md` §3. The mercy rule is unchanged and still applies.
+
+Decisions agreed before building it:
+
+- Help may be noticeable.
+- High difficulty never withholds clearing pieces.
+- The mercy rule stays as a separate safety net.
+- Whole-hand help only at higher difficulty, and only if the solver budget allows.
+
+Simulation, seeds 1..300, with the diagonal pieces (assist off = `ASSIST_MAX` 0, same code):
+
+| Metric                     | Assist off          | Assist on           |
+| -------------------------- | ------------------- | ------------------- |
+| Average moves              | 72.6                | 95.2                |
+| Score median / avg / best  | 2565 / 3107 / 19872 | 6046 / 6312 / 25957 |
+| Average best combo         | 8.94                | 15.84               |
+| Board fill at move 10 / 40 | 25% / 41%           | 17% / 33%           |
+| Final difficulty (avg)     | 0.30                | 0.52                |
+| Mercy rate                 | 7.1%                | 3.6%                |
+| Assist chance (avg)        | —                   | 75.6%               |
+| Helped: piece / hand       | —                   | 52.8% / 13.4%       |
+| Deal latency p99 / max     | 0.032 / 0.059 ms    | 0.040 / 0.049 ms    |
+
+- The bot keeps combos going most of the time, so the combo term is nearly always on and
+  the average chance is high. For a human the combo term matters less. Lower
+  `ASSIST_COMBO_GAIN` or `ASSIST_BASE` if playtesting feels too generous.
+- Whole-hand help never ran out of tries or budget in the simulation (0% piece fallback).
+- Seeded e2e scenarios re-found in Node with the e2e policies:
+  - combo 2 on move 4: seed 92 → 5;
+  - 2-line clear on move 4: seed 83 → 23 (the first seed whose 2-line clear doesn't also
+    empty the board, which would praise "Board clear!");
+  - greyed-out `square3`: seed 808 → 2020.
+- Taste defaults to review: every `ASSIST_*` value in `config.ts`.
 
 ## Known issues
 

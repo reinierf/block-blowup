@@ -127,6 +127,7 @@ export class Game {
     const { shapes, colors, info } = this.generator.deal(rowsFromBoard(this.board), {
       score: this.score,
       handsWithoutClear: this.handsWithoutClear,
+      combo: this.combo,
     });
     this.hand = shapes.map((shape, i) => ({ uid: ++uidCounter, shape, color: colors[i]! }));
     this.lastDeal = info;
