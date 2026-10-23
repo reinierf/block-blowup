@@ -12,7 +12,7 @@ export const INPUT = {
    * On touch, upward finger movement (from where the drag started) moves the piece this
    * many times as far, so it reaches the board with a shorter swipe. Downward is 1:1.
    */
-  touchUpGain: 1.25,
+  touchUpGain: 1.5,
   /** Seconds for a picked-up piece to grow from tray size to board size. */
   liftSeconds: 0.12,
   /**
