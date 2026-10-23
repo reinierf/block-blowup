@@ -5,12 +5,18 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
-import { theme } from '../src/render/theme';
+import { shade, theme } from '../src/render/theme';
 
-/** A 3×3 arrangement of bevelled blocks on the background gradient. */
+/** shade() as a CSS colour. */
+const css = (hex: string, amount: number) => `#${shade(hex, amount).toString(16).padStart(6, '0')}`;
+
+/**
+ * A 3×3 arrangement of bevelled blocks on the background gradient, drawn like the game's
+ * blocks. The favicon (rounded) fills more of the square so it reads at tab size.
+ */
 function iconSvg(size: number, rounded: boolean): string {
   const s = size;
-  const cell = s * 0.2;
+  const cell = s * (rounded ? 0.28 : 0.2);
   const gap = s * 0.02;
   const origin = (s - 3 * cell - 2 * gap) / 2;
   const pattern: (keyof typeof theme.blocks | null)[] = [
@@ -21,7 +27,7 @@ function iconSvg(size: number, rounded: boolean): string {
     'cyan',
     'cyan',
     'green',
-    'green',
+    'orange',
     'purple',
   ];
   const blocks = pattern
@@ -33,9 +39,10 @@ function iconSvg(size: number, rounded: boolean): string {
       const b = cell * 0.09;
       const hex = theme.blocks[c];
       return `
-        <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="${r}" fill="${hex}" style="filter:brightness(0.8)"/>
-        <rect x="${x}" y="${y}" width="${cell - b}" height="${cell - b}" rx="${r}" fill="${hex}" style="filter:brightness(1.15)"/>
-        <rect x="${x + b}" y="${y + b}" width="${cell - 2 * b}" height="${cell - 2 * b}" rx="${r * 0.75}" fill="${hex}"/>`;
+        <rect x="${x}" y="${y}" width="${cell}" height="${cell}" rx="${r}" fill="${css(hex, -theme.bevelDark)}"/>
+        <rect x="${x}" y="${y}" width="${cell - b}" height="${cell - b}" rx="${r}" fill="${css(hex, theme.bevelLight)}"/>
+        <rect x="${x + b}" y="${y + b}" width="${cell - 2 * b}" height="${cell - 2 * b}" rx="${r * 0.75}" fill="${hex}"/>
+        <rect x="${x + b * 1.6}" y="${y + b * 1.4}" width="${cell - 3.2 * b}" height="${(cell - 2 * b) * 0.38}" rx="${r * 0.5}" fill="#fff" fill-opacity="${theme.gloss}"/>`;
     })
     .join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">
