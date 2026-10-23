@@ -49,6 +49,9 @@ const settingsScreen = el('settings');
 const soundToggle = el<HTMLInputElement>('set-sound');
 const hapticsToggle = el<HTMLInputElement>('set-haptics');
 const hapticsNote = el('haptics-note');
+const pauseActions = el('pause-actions');
+const pauseRestart = el<HTMLButtonElement>('pause-restart');
+const settingsDone = el<HTMLButtonElement>('settings-done');
 const overlay = el('overlay');
 const overScore = el('over-score');
 const overBest = el('over-best');
@@ -147,7 +150,7 @@ function persist(): void {
 // stays fast. The service worker precaches the chunk, so this costs a moment once.
 let renderer: Renderer | null = null;
 let rendererReady: Promise<Renderer> | null = null;
-let input: { readonly drag: DragState | null } | null = null;
+let input: { readonly drag: DragState | null; cancel(): void } | null = null;
 
 function ensureRenderer(): Promise<Renderer> {
   rendererReady ??= (async () => {
@@ -309,11 +312,44 @@ function showGameOver(): void {
   overlay.hidden = false;
 }
 
+/** Leave the game for the start screen. A game in progress stays saved, for Continue. */
+function goHome(): void {
+  input?.cancel();
+  renderer?.clearEffects(); // also drops a running game-over sequence
+  showStart();
+}
+
+// --- Back button -------------------------------------------------------------
+// History entries above the start screen's: `game` while a game shows, and `settings` on top
+// while Settings is open. Back pops one, and popstate shows what is under it: Settings
+// closes, the game goes to the start screen, and Back there leaves the app as usual. The UI
+// buttons that leave a screen go back through history too, so the entries stay in step.
+type HistoryScreen = 'game' | 'settings';
+
+function historyScreen(): HistoryScreen | null {
+  return (history.state as { screen?: HistoryScreen } | null)?.screen ?? null;
+}
+
+function pushScreen(screen: HistoryScreen): void {
+  if (historyScreen() !== screen) history.pushState({ screen }, '');
+}
+
+// A reload starts on the start screen, whatever entry it reloaded.
+if (history.state !== null) history.replaceState(null, '');
+
+window.addEventListener('popstate', () => {
+  const screen = historyScreen();
+  if (screen === 'settings') return; // Forward into a closed dialog: nothing to reopen
+  if (!settingsScreen.hidden) closeSettings();
+  if (screen === null && startScreen.hidden) goHome();
+});
+
 const playBtn = el<HTMLButtonElement>('play');
 playBtn.addEventListener('click', () =>
   withRenderer(playBtn, () => {
     newGame();
     startScreen.hidden = true;
+    pushScreen('game');
     updateDebug();
   }),
 );
@@ -323,6 +359,7 @@ continueBtn.addEventListener('click', () =>
     const saved = loadSavedGame();
     if (saved) resumeGame(saved);
     startScreen.hidden = true;
+    pushScreen('game');
     updateDebug();
   }),
 );
@@ -335,7 +372,8 @@ el('restart').addEventListener('click', () => {
 
 el('to-menu').addEventListener('click', () => {
   newGame();
-  showStart();
+  if (historyScreen() === 'game') history.back();
+  else goHome();
 });
 
 // --- Settings screen ---------------------------------------------------------
@@ -351,9 +389,54 @@ function openSettings(fromStart: boolean): void {
   for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"]')) {
     r.checked = r.value === settings.reducedMotion;
   }
+  // Opened from the HUD, Settings is the pause menu too.
+  pauseActions.hidden = fromStart;
+  settingsDone.textContent = fromStart ? 'Done' : 'Resume';
+  disarmRestart();
+  input?.cancel();
   startScreen.hidden = true;
   settingsScreen.hidden = false;
+  pushScreen('settings');
 }
+
+function closeSettings(): void {
+  settingsScreen.hidden = true;
+  if (settingsFromStart) showStart();
+}
+
+/** Leave Settings through history (see Back button), or directly if it has no entry. */
+function leaveSettings(): void {
+  if (historyScreen() === 'settings') history.back();
+  else closeSettings();
+}
+
+// Restart throws the game away, so it takes a second tap.
+let restartArmed = false;
+
+function disarmRestart(): void {
+  restartArmed = false;
+  pauseRestart.textContent = 'Restart';
+}
+
+pauseRestart.addEventListener('click', () => {
+  if (!restartArmed) {
+    restartArmed = true;
+    pauseRestart.textContent = 'Tap again';
+    return;
+  }
+  newGame();
+  leaveSettings();
+  updateDebug();
+});
+
+el('pause-menu').addEventListener('click', () => {
+  // Pop the settings and game entries together; popstate then goes home.
+  if (historyScreen() === 'settings') history.go(-2);
+  else {
+    closeSettings();
+    goHome();
+  }
+});
 
 function applySettings(): void {
   audio.muted = settings.muted;
@@ -389,10 +472,7 @@ fullscreen.onChange(() => {
 
 el('open-settings').addEventListener('click', () => openSettings(false));
 el('start-settings').addEventListener('click', () => openSettings(true));
-el('settings-done').addEventListener('click', () => {
-  settingsScreen.hidden = true;
-  if (settingsFromStart) showStart();
-});
+settingsDone.addEventListener('click', leaveSettings);
 
 // --- Frame loop (paused while the tab is hidden) -----------------------------
 let lastTime = performance.now();

@@ -2,6 +2,8 @@ import { test, expect } from './fixtures';
 import {
   continueGame,
   dragToCell,
+  firstFit,
+  holdOverCell,
   nearlyOverSave,
   openApp,
   openGame,
@@ -150,4 +152,90 @@ test('settings opened from the HUD return to the game', async ({ page }) => {
   await page.click('#settings-done');
   await expect(page.locator('#settings')).toBeHidden();
   await expect(page.locator('#start')).toBeHidden();
+});
+
+test('settings opened from the start screen have no pause actions', async ({ page }) => {
+  await openApp(page);
+  await page.click('#start-settings');
+  await expect(page.locator('#pause-actions')).toBeHidden();
+  await expect(page.locator('#settings-done')).toHaveText('Done');
+});
+
+test('pause menu → Menu keeps the game saved; Continue resumes it', async ({ page }) => {
+  await openGame(page, 3);
+  await playFirstFit(page, 3);
+  const before = await snapshot(page);
+  await page.click('#open-settings');
+  await expect(page.locator('#settings-done')).toHaveText('Resume');
+  await page.click('#pause-menu');
+  await expect(page.locator('#start')).toBeVisible();
+  await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#continue-score')).toHaveText(String(before.score));
+
+  await continueGame(page);
+  const after = await snapshot(page);
+  expect(after.board).toEqual(before.board);
+  expect(after.score).toBe(before.score);
+  // The menu and game entries were both popped: Back now goes to the start screen once.
+  await page.goBack();
+  await expect(page.locator('#start')).toBeVisible();
+});
+
+test('pause menu → Restart takes a second tap', async ({ page }) => {
+  await openGame(page, 3);
+  await playFirstFit(page, 3);
+  const before = await snapshot(page);
+  await page.click('#open-settings');
+  await page.click('#pause-restart');
+  await expect(page.locator('#pause-restart')).toHaveText('Tap again');
+  expect((await snapshot(page)).score).toBe(before.score);
+  await page.click('#pause-restart');
+  await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#start')).toBeHidden();
+  expect((await snapshot(page)).score).toBe(0);
+
+  // Reopened, Restart asks again.
+  await page.click('#open-settings');
+  await expect(page.locator('#pause-restart')).toHaveText('Restart');
+  await page.click('#settings-done');
+  // Settings left no stale entry: one Back reaches the start screen.
+  await page.goBack();
+  await expect(page.locator('#start')).toBeVisible();
+});
+
+test('Back closes Settings, then goes from the game to the start screen', async ({ page }) => {
+  await openGame(page, 3);
+  await playFirstFit(page, 2);
+  const before = await snapshot(page);
+  await page.click('#open-settings');
+  await page.goBack();
+  await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#start')).toBeHidden();
+
+  await page.goBack();
+  await expect(page.locator('#start')).toBeVisible();
+  await expect(page.locator('#continue-score')).toHaveText(String(before.score));
+  await continueGame(page);
+  expect((await snapshot(page)).board).toEqual(before.board);
+});
+
+test('Back mid-drag drops the piece without placing it', async ({ page }) => {
+  await openGame(page, 3);
+  const before = await snapshot(page);
+  const { col, row } = firstFit(before, 0);
+  await holdOverCell(page, 0, col, row);
+  await page.goBack();
+  await expect(page.locator('#start')).toBeVisible();
+  await page.mouse.up();
+  const after = await snapshot(page);
+  expect(after.board).toEqual(before.board);
+  expect(after.hand).toEqual(before.hand);
+});
+
+test('Back closes Settings opened from the start screen', async ({ page }) => {
+  await openApp(page);
+  await page.click('#start-settings');
+  await page.goBack();
+  await expect(page.locator('#settings')).toBeHidden();
+  await expect(page.locator('#start')).toBeVisible();
 });

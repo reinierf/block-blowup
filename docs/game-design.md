@@ -343,7 +343,14 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
   when reducing motion; returning to the menu shows the settled screen.
 - **Settings** (from the start screen or the HUD gear): Sound, Vibration (disabled with a
   note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
-  and save immediately.
+  and save immediately. Opened from the HUD gear it is also the **pause menu**: **Restart**
+  (takes a second tap, "Tap again"; starts a new game) and **Menu** (to the start screen;
+  the game stays saved, so Continue resumes it) side by side, and **Resume** in place of
+  Done.
+- **Back button** (Android, browser Back): starting or continuing a game adds a history
+  entry, and opening Settings another. Back closes Settings, then goes from the game to
+  the start screen (the game stays saved), then leaves the app as usual. A drag in
+  progress is dropped. The installed iOS app has no Back, hence the pause menu.
 - **Game over:** after the game-over sequence (or a tap that skips it), the score screen shows "New best!" when it
   applies, the score (large, Nunito with the HUD's shadow) and the best (with the crown),
   **Play again** and **Menu**.

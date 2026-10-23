@@ -39,6 +39,8 @@ export interface InputDeps {
 
 export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps): {
   readonly drag: DragState | null;
+  /** Drop the piece being dragged without placing it (leaving the game mid-drag). */
+  cancel(): void;
 } {
   let drag: DragState | null = null;
 
@@ -127,5 +129,6 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
     get drag() {
       return drag;
     },
+    cancel: endDrag,
   };
 }

@@ -273,6 +273,23 @@ body {
   font-size: 18px;
 }
 
+/* Settings as the pause menu: Restart and Menu, side by side above Resume. */
+.pause-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.pause-actions[hidden] {
+  display: none;
+}
+
+.pause-actions button {
+  flex: 1;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 /* --- Start screen: a full-screen splash ------------------------------------------ */
 /* Own background (no blurred game behind it). The logo, on a soft glow with slowly turning
    rays, fills the space above; the best score and big buttons sit in the lower third, in

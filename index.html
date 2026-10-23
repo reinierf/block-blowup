@@ -148,6 +148,11 @@
               <label><input type="radio" name="motion" value="off" /><span>Off</span></label>
             </div>
           </fieldset>
+          <!-- Only when opened from the HUD (main.ts): Settings is then the pause menu. -->
+          <div id="pause-actions" class="pause-actions" hidden>
+            <button id="pause-restart" class="secondary" type="button">Restart</button>
+            <button id="pause-menu" class="secondary" type="button">Menu</button>
+          </div>
           <button id="settings-done" type="button">Done</button>
         </div>
       </section>
