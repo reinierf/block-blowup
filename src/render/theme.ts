@@ -131,3 +131,12 @@ export function cssVariables(t: Theme = theme): Record<string, string> {
     ...Object.fromEntries(Object.entries(t.blocks).map(([name, hex]) => [`--block-${name}`, hex])),
   };
 }
+
+/**
+ * The same variables as a `:root` rule, inlined into index.html at build time (vite.config.ts)
+ * so the first paint already has the theme, before any script runs.
+ */
+export function cssVariablesRule(t: Theme = theme): string {
+  const decls = Object.entries(cssVariables(t)).map(([name, value]) => `${name}:${value}`);
+  return `:root{${decls.join(';')}}`;
+}

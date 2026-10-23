@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { theme } from './src/render/theme';
+import { cssVariablesRule, theme } from './src/render/theme';
 
 // GitHub Pages serves the site from /<repo>/, so production builds need that base path.
 const PAGES_BASE = '/block-blowup/';
@@ -15,6 +15,14 @@ export default defineConfig(({ command, isPreview }) => ({
   preview: { host: true, port: 4173 },
   build: { target: 'es2022' },
   plugins: [
+    // Inline the theme's CSS variables so the first paint isn't unstyled (white) while
+    // main.ts loads.
+    {
+      name: 'inline-theme-vars',
+      transformIndexHtml: () => [
+        { tag: 'style', children: cssVariablesRule(), injectTo: 'head-prepend' },
+      ],
+    },
     VitePWA({
       // Never reload mid-game: a waiting update shows an "Update available" prompt instead.
       registerType: 'prompt',
