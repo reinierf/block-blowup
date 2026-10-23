@@ -10,31 +10,39 @@ import { shade, theme } from '../src/render/theme';
 /** shade() as a CSS colour. */
 const css = (hex: string, amount: number) => `#${shade(hex, amount).toString(16).padStart(6, '0')}`;
 
+type Block = keyof typeof theme.blocks | null;
+
+/** App icons: a 3×3 arrangement, inside the maskable safe zone. */
+const APP_PATTERN: Block[] = [
+  'red',
+  'yellow',
+  null,
+  'red',
+  'cyan',
+  'cyan',
+  'green',
+  'orange',
+  'purple',
+];
+/** Favicon: 2×2, so the blocks stay legible at tab size. */
+const FAVICON_PATTERN: Block[] = ['red', 'yellow', 'cyan', 'purple'];
+
 /**
- * A 3×3 arrangement of bevelled blocks on the background gradient, drawn like the game's
- * blocks. The favicon (rounded) fills more of the square so it reads at tab size.
+ * A square arrangement of bevelled blocks on the background gradient, drawn like the
+ * game's blocks. The favicon (rounded) uses a 2×2 grid filling more of the square.
  */
 function iconSvg(size: number, rounded: boolean): string {
   const s = size;
-  const cell = s * (rounded ? 0.28 : 0.2);
-  const gap = s * 0.02;
-  const origin = (s - 3 * cell - 2 * gap) / 2;
-  const pattern: (keyof typeof theme.blocks | null)[] = [
-    'red',
-    'yellow',
-    null,
-    'red',
-    'cyan',
-    'cyan',
-    'green',
-    'orange',
-    'purple',
-  ];
+  const pattern = rounded ? FAVICON_PATTERN : APP_PATTERN;
+  const n = Math.sqrt(pattern.length);
+  const cell = s * (rounded ? 0.38 : 0.2);
+  const gap = s * (rounded ? 0.04 : 0.02);
+  const origin = (s - n * cell - (n - 1) * gap) / 2;
   const blocks = pattern
     .map((c, i) => {
       if (!c) return '';
-      const x = origin + (i % 3) * (cell + gap);
-      const y = origin + Math.floor(i / 3) * (cell + gap);
+      const x = origin + (i % n) * (cell + gap);
+      const y = origin + Math.floor(i / n) * (cell + gap);
       const r = cell * 0.16;
       const b = cell * 0.09;
       const hex = theme.blocks[c];
