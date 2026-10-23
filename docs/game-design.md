@@ -329,7 +329,7 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
 
 - **Start screen:** a full-screen splash (plain HTML and CSS, visible before any script
   runs) on the background gradient: a logo of tilted letter blocks in the block colours
-  (both rows arching up; scales with the viewport up to 400 px
+  (letters in Lilita One, bundled like Nunito; both rows arching up; scales with the viewport up to 400 px
   wide, with at least 32 px either side) on a soft white glow with
   faint rays turning once every two minutes (still when reducing motion), centred in the
   space above the controls; in the lower third, the best score on a crown badge,

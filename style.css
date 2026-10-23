@@ -8,6 +8,15 @@
   font-display: swap;
   src: url('/fonts/nunito-latin-700.woff2') format('woff2');
 }
+
+/* Lilita One (latin subset, SIL OFL: public/fonts/OFL-LilitaOne.txt), for the logo tiles. */
+@font-face {
+  font-family: 'Lilita One';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/lilita-one-latin-400.woff2') format('woff2');
+}
 * {
   box-sizing: border-box;
 }
@@ -435,9 +444,9 @@ body {
   height: var(--s);
   padding-bottom: calc(var(--s) * 0.08);
   color: var(--text);
-  font-family: 'Nunito', system-ui, sans-serif;
-  font-size: calc(var(--s) * 0.62);
-  font-weight: 700;
+  font-family: 'Lilita One', 'Nunito', system-ui, sans-serif;
+  font-size: calc(var(--s) * 0.64);
+  font-weight: 400;
   line-height: 1;
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.22);
   box-shadow:
