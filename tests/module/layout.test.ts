@@ -6,6 +6,7 @@ import {
   fitScale,
   slotAt,
   trayCellFor,
+  type HandSlot,
   type Insets,
   type Rect,
 } from '../../src/render/layout';
@@ -196,5 +197,37 @@ describe('layout specifics', () => {
       expect(slotAt(l, s.x + s.w - 1, s.y + s.h - 1)).toBe(s.index);
     }
     expect(slotAt(l, l.board.x + 5, l.board.y + 5)).toBe(-1);
+  });
+
+  it('slotAt extends the tray from the board bottom to the screen edges', () => {
+    const l = computeLayout(844, 390, { top: 0, right: 47, bottom: 21, left: 47 });
+    const boardBottom = l.board.y + l.board.size;
+    expect(slotAt(l, l.hand.slots[1]!.cx, boardBottom)).toBe(1);
+    expect(slotAt(l, l.hand.slots[1]!.cx, boardBottom - 1)).toBe(-1);
+    expect(slotAt(l, 0, l.height - 1)).toBe(0); // left of the column, in the inset
+    expect(slotAt(l, l.width - 1, l.height - 1)).toBe(2);
+    expect(slotAt(l, l.width - 1, l.height)).toBe(-1);
+  });
+
+  it("slotAt shares an empty slot's area between its neighbours", () => {
+    const l = computeLayout(390, 844);
+    const [a, b, c] = l.hand.slots as [HandSlot, HandSlot, HandSlot];
+    const y = b.cy;
+    const mid = (a.cx + c.cx) / 2;
+    expect(slotAt(l, b.cx - 1, y, [true, false, true])).toBe(0);
+    expect(slotAt(l, mid - 1, y, [true, false, true])).toBe(0);
+    expect(slotAt(l, mid + 1, y, [true, false, true])).toBe(2);
+    expect(slotAt(l, c.x + 1, y, [true, true, false])).toBe(1);
+    expect(slotAt(l, a.x + 1, y, [false, true, true])).toBe(1);
+  });
+
+  it('slotAt gives a lone piece the whole tray, and nothing when the hand is empty', () => {
+    const l = computeLayout(390, 844);
+    const y = l.hand.slots[0]!.cy;
+    for (const x of [0, l.width / 2, l.width - 1]) {
+      expect(slotAt(l, x, y, [false, false, true])).toBe(2);
+      expect(slotAt(l, x, y, [true, false, false])).toBe(0);
+      expect(slotAt(l, x, y, [false, false, false])).toBe(-1);
+    }
   });
 });

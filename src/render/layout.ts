@@ -161,10 +161,29 @@ export function fitScale(contentW: number, contentH: number, box: Rect): number 
   return Math.max(0, Math.min(1, box.w / contentW, box.h / contentH));
 }
 
-/** Index of the tray slot containing (x, y), or -1. */
-export function slotAt(layout: Layout, x: number, y: number): number {
+/**
+ * Index of the hand piece a press at (x, y) picks up, or -1. Everything below the board,
+ * across the full viewport width, belongs to the piece whose slot centre is horizontally
+ * nearest, among the slots that still hold a piece (`occupied`): an emptied slot's area
+ * is shared by its neighbours, and a lone piece gets the whole tray.
+ */
+export function slotAt(
+  layout: Layout,
+  x: number,
+  y: number,
+  occupied: readonly boolean[] = [true, true, true],
+): number {
+  const { board } = layout;
+  if (y < board.y + board.size || y >= layout.height || x < 0 || x >= layout.width) return -1;
+  let best = -1;
+  let bestDist = Infinity;
   for (const s of layout.hand.slots) {
-    if (x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h) return s.index;
+    if (!occupied[s.index]) continue;
+    const dist = Math.abs(x - s.cx);
+    if (dist < bestDist) {
+      best = s.index;
+      bestDist = dist;
+    }
   }
-  return -1;
+  return best;
 }

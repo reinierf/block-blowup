@@ -84,9 +84,15 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
     const layout = getLayout();
     if (!layout) return;
     const point = toLocal(e);
-    const handIndex = slotAt(layout, point.x, point.y);
+    const hand = getGame().hand;
+    const handIndex = slotAt(
+      layout,
+      point.x,
+      point.y,
+      hand.map((p) => p !== null),
+    );
     if (handIndex < 0) return;
-    const piece = getGame().hand[handIndex];
+    const piece = hand[handIndex];
     // Greyed-out pieces (no legal placement anywhere) can't be picked up.
     if (!piece || !getGame().pieceFits(handIndex)) return;
 

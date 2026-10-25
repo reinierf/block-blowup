@@ -210,7 +210,11 @@ that matters — if two of your three pieces still fit, you keep playing.
 
 - **Drag and drop** a piece from the tray onto the board using Pointer Events, so mouse,
   touch, and pen all use one code path (`src/input.ts`). Only one pointer is tracked at a
-  time; extra touches are ignored. The whole tray slot is the hit area (at least 44×44 px).
+  time; extra touches are ignored. Hit areas (`slotAt`) cover everything below the
+  board, across the full screen width: a press picks the piece whose slot centre is
+  horizontally nearest, among the slots that still hold a piece. An emptied slot's area
+  is shared by its neighbours, and a lone piece can be picked up anywhere below the
+  board. A greyed-out piece keeps its area, so pressing it never grabs a neighbour.
 - **Greyed-out pieces:** a tray piece that fits nowhere on the board is drawn dimmed and
   grey (`Game.pieceFits`) and cannot be picked up.
 - **Lift:** a picked-up piece grows from tray size to board size over
