@@ -44,6 +44,8 @@ export interface Theme {
   rim: number;
   /** Opacity of a coloured halo around each block and the board rim (0 = none). */
   glow: number;
+  /** Opacity of a wide additive bloom around filled cells and pieces (0 / absent = none). */
+  bloom?: number;
   /** How blocks are drawn: bevelled squares (default) or neon tube outlines. */
   blockStyle?: 'bevel' | 'tube';
   /** Extra CSS text-shadow on the score and titles, e.g. a neon glow. */
@@ -147,6 +149,7 @@ export const NEON: Theme = {
   rim: 0.9,
   glow: 1,
   blockStyle: 'tube',
+  bloom: 0.5,
   textGlow: '0 0 3px #FF2BD6, 0 0 10px #FF2BD6, 0 0 24px rgba(255, 43, 214, 0.7)',
 };
 

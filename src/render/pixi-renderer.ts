@@ -26,6 +26,9 @@ import { hexToNumber, shade, theme } from './theme';
 /** Gap between neighbouring cells, as a fraction of a cell. */
 const CELL_GAP = 0.06;
 
+/** How far the bloom (themes with `bloom`) reaches past a block, in cells. */
+const BLOOM_REACH = 0.45;
+
 /** Tray pieces that fit nowhere: dimmed and desaturated. */
 const UNPLACEABLE_ALPHA = 0.35;
 const UNPLACEABLE_TINT = 0x8a8f99;
@@ -100,6 +103,8 @@ export async function createPixiRenderer(
   const boardLayer = new Container();
   const panel = new Graphics();
   const cellLayer = new Container();
+  /** Over the cells: soft additive glow around filled cells (themes with `bloom`). */
+  const bloomLayer = new Container();
   const ghostLayer = new Container();
   const flashLayer = new Container();
   const trayLayer = new Container();
@@ -109,13 +114,15 @@ export async function createPixiRenderer(
   const trayParticles = new ParticleContainer({ dynamicProperties: particleProps });
   const dragLayer = new Container();
   const popupLayer = new Container();
-  boardLayer.addChild(panel, cellLayer, ghostLayer, flashLayer);
+  boardLayer.addChild(panel, cellLayer, bloomLayer, ghostLayer, flashLayer);
   app.stage.addChild(boardLayer, trayParticles, trayLayer, particles, dragLayer, popupLayer);
 
   let layout: Layout | null = null;
   let layoutVersion = 0;
   let cellSprites: Sprite[] = [];
+  let bloomSprites: Sprite[] = [];
   const blockTextures = new Map<string, Texture>();
+  const bloomTextures = new Map<string, Texture>();
   let emptyTexture = Texture.EMPTY;
   let flashTexture = Texture.EMPTY;
   let particleTexture = Texture.EMPTY;
@@ -222,9 +229,48 @@ export async function createPixiRenderer(
     return tex ?? Texture.EMPTY;
   }
 
+  /**
+   * Bloom: a wide, soft glow in the block's colour (centre-anchored, reaching
+   * BLOOM_REACH cells past the block), drawn additively so overlapping blooms brighten.
+   */
+  function bloomTexture(color: string): Texture {
+    let tex = bloomTextures.get(color);
+    if (!tex && layout) {
+      const c = hexToNumber(blockColor(color));
+      const s = layout.board.cell * (1 - 2 * CELL_GAP);
+      const reach = layout.board.cell * BLOOM_REACH;
+      const rings = 16;
+      tex = bake((g) => {
+        // Abutting rings outside the block, fading with distance (quadratically): light
+        // around the block, none over its inside.
+        // Start at the tube line (tube blocks are inset ~0.09 of the block), not the edge.
+        const start = theme.blockStyle === 'tube' ? -s * 0.09 : 0;
+        const w = (reach - start) / rings;
+        for (let k = 0; k < rings; k++) {
+          const e = start + (k + 0.5) * w;
+          const f = 1 - (k + 0.5) / rings;
+          g.roundRect(-e, -e, s + 2 * e, s + 2 * e, s * 0.16 + e).stroke({
+            color: c,
+            width: w + 0.5,
+            alpha: (theme.bloom ?? 0) * f * f,
+          });
+        }
+      });
+      bloomTextures.set(color, tex);
+    }
+    return tex ?? Texture.EMPTY;
+  }
+
+  function bloomSprite(color: string): Sprite {
+    const sp = new Sprite({ texture: bloomTexture(color), anchor: 0.5 });
+    sp.blendMode = 'add';
+    return sp;
+  }
+
   function rebuildTextures(): void {
-    for (const t of blockTextures.values()) t.destroy(true);
+    for (const t of [...blockTextures.values(), ...bloomTextures.values()]) t.destroy(true);
     blockTextures.clear();
+    bloomTextures.clear();
     for (const t of [emptyTexture, flashTexture, particleTexture]) {
       if (t !== Texture.EMPTY) t.destroy(true);
     }
@@ -278,7 +324,9 @@ export async function createPixiRenderer(
     }
 
     cellLayer.removeChildren().forEach((c) => c.destroy());
+    bloomLayer.removeChildren().forEach((c) => c.destroy());
     cellSprites = [];
+    bloomSprites = [];
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         const sp = new Sprite(emptyTexture);
@@ -286,6 +334,13 @@ export async function createPixiRenderer(
         sp.position.set(p.x - glowPad, p.y - glowPad);
         cellLayer.addChild(sp);
         cellSprites.push(sp);
+        if (theme.bloom) {
+          const bloom = bloomSprite('red');
+          bloom.position.set((col + 0.5) * b.cell + b.x, (row + 0.5) * b.cell + b.y);
+          bloom.visible = false;
+          bloomLayer.addChild(bloom);
+          bloomSprites.push(bloom);
+        }
       }
     }
     trayKeys = [];
@@ -319,6 +374,14 @@ export async function createPixiRenderer(
         cy * cell + cell * CELL_GAP - glowPad * scale,
       );
       c.addChild(sp);
+    }
+    if (theme.bloom) {
+      for (const [cx, cy] of cells) {
+        const bloom = bloomSprite(color);
+        bloom.scale.set(scale);
+        bloom.position.set((cx + 0.5) * cell, (cy + 0.5) * cell);
+        c.addChild(bloom);
+      }
     }
     return c;
   }
@@ -764,6 +827,11 @@ export async function createPixiRenderer(
         const i = row * 8 + col;
         const color = previewed.has(i) && grid[row]![col] ? drag!.color : grid[row]![col];
         cellSprites[i]!.texture = color ? blockTexture(color) : emptyTexture;
+        const bloom = bloomSprites[i];
+        if (bloom) {
+          bloom.visible = !!color;
+          if (color) bloom.texture = bloomTexture(color);
+        }
       }
     }
     const over = gameOver
@@ -772,6 +840,7 @@ export async function createPixiRenderer(
     if (over) {
       for (const i of gameOver!.order.slice(0, over.greyed)) {
         cellSprites[i]!.texture = blockTexture(GREY);
+        if (bloomSprites[i]) bloomSprites[i]!.visible = false;
       }
       drawBanner(over);
     }

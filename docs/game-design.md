@@ -264,8 +264,11 @@ that matters — if two of your three pieces still fit, you keep playing.
   core and a wide faint halo, around a dark, faintly tinted inside (red `#FF1F4F`, orange
   `#FF7A00`, yellow `#EEFF00`, green `#00FF85`, cyan `#00F0FF`, blue `#4D8CFF`, purple
   `#B026FF`). The board rim is a hot-pink tube, empty cells have a faint pink outline (an
-  unlit tube), and the score, titles and score popups glow. The halo is baked into the
-  cell textures and kept inside the gap between cells. Settings → Theme (Vivid / Calm /
+  unlit tube), and the score, titles and score popups glow. The tight halo is baked into
+  the cell textures and kept inside the gap between cells; a wider bloom (`bloom`, reaching
+  0.45 cell past the block and fading quadratically, light outside the tube only) is drawn
+  with additive blending over the board cells and with tray and dragged pieces, so
+  neighbouring blooms brighten each other. Settings → Theme (Vivid / Calm /
   Neon) switches live: the active theme object is updated in place, the CSS variables are
   re-applied and the renderer rebuilds its textures. `?theme=neon|vivid|subdued` also picks
   one. The choice is remembered in `localStorage` (`block-blowup.theme`), so the installed
