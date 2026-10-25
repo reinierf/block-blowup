@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INPUT, dropTarget, pieceOrigin } from '../../src/input-logic';
+import { INPUT, dropTarget, holdsTarget, pieceOrigin } from '../../src/input-logic';
 import { computeLayout } from '../../src/render/layout';
 import { shape } from '../helpers/boards';
 
@@ -70,5 +70,28 @@ describe('dropTarget', () => {
     const line = shape('line5-h');
     expect(dropTarget(layout, line, at(3, 0))).toEqual({ col: 3, row: 0 });
     expect(dropTarget(layout, line, at(3.6, 0))).toBeNull();
+  });
+});
+
+describe('holdsTarget', () => {
+  const target = { col: 3, row: 4 };
+
+  it('holds the last legal target within holdCells of it', () => {
+    expect(INPUT.holdCells).toBe(1.5);
+    expect(holdsTarget(layout, at(3, 4), target)).toBe(true);
+    expect(holdsTarget(layout, at(4.4, 4), target)).toBe(true);
+    expect(holdsTarget(layout, at(3, 2.6), target)).toBe(true);
+    expect(holdsTarget(layout, at(4, 5), target)).toBe(true); // diagonal: ~1.41 cells
+  });
+
+  it('releases it beyond holdCells', () => {
+    expect(holdsTarget(layout, at(4.6, 4), target)).toBe(false);
+    expect(holdsTarget(layout, at(3, 6.6), target)).toBe(false);
+    expect(holdsTarget(layout, at(4.1, 5.1), target)).toBe(false); // diagonal: ~1.56 cells
+  });
+
+  it('holds past the board edge', () => {
+    expect(holdsTarget(layout, at(-1, 0), { col: 0, row: 0 })).toBe(true);
+    expect(holdsTarget(layout, at(-1.6, 0), { col: 0, row: 0 })).toBe(false);
   });
 });

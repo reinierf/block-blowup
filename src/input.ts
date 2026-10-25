@@ -6,7 +6,7 @@
 import type { LinePreview } from './game/board';
 import type { Shape } from './game/pieces';
 import type { Game, TurnResult } from './game/state';
-import { dropTarget, pieceOrigin, type Point } from './input-logic';
+import { dropTarget, holdsTarget, pieceOrigin, type Point } from './input-logic';
 import { slotAt, type Layout } from './render/layout';
 
 export interface DragState {
@@ -26,6 +26,8 @@ export interface DragState {
   valid: boolean;
   /** Lines the drop would clear (empty preview when none); null unless `valid`. */
   preview: LinePreview | null;
+  /** The most recent legal target and its preview, held while within `INPUT.holdCells`. */
+  held: { col: number; row: number; preview: LinePreview } | null;
 }
 
 export interface InputDeps {
@@ -58,6 +60,15 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
     const game = getGame();
     d.target = dropTarget(layout, d.shape, origin, game.size);
     d.preview = d.target ? game.previewAt(d.handIndex, d.target.col, d.target.row) : null;
+    if (d.target && d.preview) {
+      d.held = { ...d.target, preview: d.preview };
+    } else if (d.held && holdsTarget(layout, origin, d.held)) {
+      // Not over a legal spot: keep the last legal one while the piece is still near it.
+      d.target = { col: d.held.col, row: d.held.row };
+      d.preview = d.held.preview;
+    } else {
+      d.held = null;
+    }
     d.valid = d.preview !== null;
   }
 
@@ -91,6 +102,7 @@ export function createInput({ surface, getLayout, getGame, onPlace }: InputDeps)
       target: null,
       valid: false,
       preview: null,
+      held: null,
     };
     move(drag, point);
     surface.setPointerCapture?.(e.pointerId);

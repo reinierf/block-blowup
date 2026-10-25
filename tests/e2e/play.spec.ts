@@ -47,7 +47,19 @@ test.describe('drag and drop', () => {
       }
     }
     expect(target).not.toBeNull();
-    await dragToCell(page, 1, target!.col, target!.row);
+    // Via the HUD (far from the board, so no legal target is held), then straight onto
+    // the occupied spot: a path across the board could pass a legal spot within
+    // INPUT.holdCells and drop there instead.
+    const l = await layout(page);
+    const s = l.hand.slots[1]!;
+    await page.mouse.move(s.cx, s.cy);
+    await page.mouse.down();
+    await page.mouse.move(l.board.x + l.board.size / 2, l.hud.y + l.hud.h / 2, { steps: 4 });
+    await page.mouse.move(
+      l.board.x + (target!.col + p.w / 2) * l.board.cell,
+      l.board.y + (target!.row + p.h / 2) * l.board.cell,
+    );
+    await page.mouse.up();
     const after = await snapshot(page);
     expect(after.hand[1]).toEqual(p);
     expect(after.board).toEqual(mid.board);

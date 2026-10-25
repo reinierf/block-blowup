@@ -215,15 +215,19 @@ that matters — if two of your three pieces still fit, you keep playing.
   grey (`Game.pieceFits`) and cannot be picked up.
 - **Lift:** a picked-up piece grows from tray size to board size over
   `INPUT.liftSeconds` (0.12 s), moving from its tray position to the pointer. With the
-  mouse it is centred on the pointer; on touch it floats `INPUT.touchLiftCells` (2.2)
+  mouse it is centred on the pointer; on touch it floats `INPUT.touchLiftCells` (2.6)
   cells above the finger so the thumb never hides it.
-- **Touch speed-up:** on touch, the piece moves `INPUT.touchUpGain` (1.25) times as far
+- **Touch speed-up:** on touch, the piece moves `INPUT.touchUpGain` (2.0) times as far
   as the finger above the point where the drag started, so a short swipe reaches the
   board (like the original). Below that point, and with the mouse, it follows 1:1.
 - **Snapping** (`dropTarget` in `src/input-logic.ts`): the piece's top-left snaps to the
   nearest cell when the piece is over the board or overhangs it by at most half a cell
   (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and
   releasing returns the piece to the tray.
+- **Holding the last legal target** (`holdsTarget`): when the piece is over a blocked
+  spot or off the board, the most recent legal target stays active (ghost, preview and
+  drop) until the piece's top-left is more than `INPUT.holdCells` (1.5) cells from it, so
+  a small overshoot doesn't lose the drop.
 - While there is a target, a **ghost** shows where the piece would land: the piece's own
   block colour, faded, when legal; a faded red when blocked.
 - **Line-clear preview** (the most important feedback in the game): when a legal drop
@@ -392,33 +396,33 @@ missing, blocked or corrupt data falls back to "nothing saved".
 
 ## 10. Code map
 
-| File                          | Responsibility                                             |
-| ----------------------------- | ---------------------------------------------------------- |
-| `src/main.ts`                 | Bootstrap, frame loop, wiring, HUD/overlay                 |
-| `src/game/pieces.ts`          | Shape set (with families), piece colour names              |
-| `src/game/config.ts`          | Every tunable gameplay number                              |
-| `src/game/rng.ts`             | Seeded RNG (mulberry32), weighted picks                    |
-| `src/game/difficulty.ts`      | Difficulty from score, P(solvable)                         |
-| `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy                     |
-| `src/game/solver.ts`          | Can a whole hand be placed? (bounded DFS)                  |
-| `src/game/bitboard.ts`        | Packed board representation for search                     |
-| `src/game/board.ts`           | 8×8 grid, collision/placement, line detection & clearing   |
-| `src/game/scoring.ts`         | Placement points, line-clear points, combo multiplier      |
-| `src/game/state.ts`           | Game state machine, hand management, turn resolution       |
-| `src/render/layout.ts`        | Mobile-first geometry (HUD, board, tray, safe area)        |
-| `src/render/renderer.ts`      | Renderer interface                                         |
-| `src/render/pixi-renderer.ts` | PixiJS renderer: board, tray, drag, ghost, effects         |
-| `src/render/theme.ts`         | Colour tokens                                              |
-| `src/input-logic.ts`          | Pure drag geometry: piece origin, snapping, drop tolerance |
-| `src/test-hook.ts`            | `?seed&test=1` hook for Playwright (dev/test builds only)  |
-| `src/input.ts`                | Pointer-based drag & drop                                  |
-| `src/storage.ts`              | High score and saved game in localStorage                  |
-| `src/game/save.ts`            | Save / validate / restore a game in progress               |
-| `src/settings.ts`             | Settings (mute, haptics, reduced motion)                   |
-| `src/feedback/plan.ts`        | Turn result → feedback plan                                |
-| `src/audio.ts`                | Synthesised sound effects                                  |
-| `src/haptics.ts`              | Vibration                                                  |
-| `src/pwa.ts`                  | Service worker registration and update prompt              |
+| File                          | Responsibility                                                          |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `src/main.ts`                 | Bootstrap, frame loop, wiring, HUD/overlay                              |
+| `src/game/pieces.ts`          | Shape set (with families), piece colour names                           |
+| `src/game/config.ts`          | Every tunable gameplay number                                           |
+| `src/game/rng.ts`             | Seeded RNG (mulberry32), weighted picks                                 |
+| `src/game/difficulty.ts`      | Difficulty from score, P(solvable)                                      |
+| `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy                                  |
+| `src/game/solver.ts`          | Can a whole hand be placed? (bounded DFS)                               |
+| `src/game/bitboard.ts`        | Packed board representation for search                                  |
+| `src/game/board.ts`           | 8×8 grid, collision/placement, line detection & clearing                |
+| `src/game/scoring.ts`         | Placement points, line-clear points, combo multiplier                   |
+| `src/game/state.ts`           | Game state machine, hand management, turn resolution                    |
+| `src/render/layout.ts`        | Mobile-first geometry (HUD, board, tray, safe area)                     |
+| `src/render/renderer.ts`      | Renderer interface                                                      |
+| `src/render/pixi-renderer.ts` | PixiJS renderer: board, tray, drag, ghost, effects                      |
+| `src/render/theme.ts`         | Colour tokens                                                           |
+| `src/input-logic.ts`          | Pure drag geometry: piece origin, snapping, drop tolerance, target hold |
+| `src/test-hook.ts`            | `?seed&test=1` hook for Playwright (dev/test builds only)               |
+| `src/input.ts`                | Pointer-based drag & drop                                               |
+| `src/storage.ts`              | High score and saved game in localStorage                               |
+| `src/game/save.ts`            | Save / validate / restore a game in progress                            |
+| `src/settings.ts`             | Settings (mute, haptics, reduced motion)                                |
+| `src/feedback/plan.ts`        | Turn result → feedback plan                                             |
+| `src/audio.ts`                | Synthesised sound effects                                               |
+| `src/haptics.ts`              | Vibration                                                               |
+| `src/pwa.ts`                  | Service worker registration and update prompt                           |
 
 ### Design rule
 

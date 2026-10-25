@@ -7,12 +7,12 @@ import type { Layout } from './render/layout';
 
 export const INPUT = {
   /** On touch, the piece floats this many board cells above the finger (tune on a phone). */
-  touchLiftCells: 2.2,
+  touchLiftCells: 2.6,
   /**
    * On touch, upward finger movement (from where the drag started) moves the piece this
    * many times as far, so it reaches the board with a shorter swipe. Downward is 1:1.
    */
-  touchUpGain: 1.5,
+  touchUpGain: 2.0,
   /** Seconds for a picked-up piece to grow from tray size to board size. */
   liftSeconds: 0.12,
   /**
@@ -20,6 +20,12 @@ export const INPUT = {
    * 0.5 means "over the board or within about half a cell of it".
    */
   dropTolerance: 0.5,
+  /**
+   * While the piece is over no legal spot, the last legal target stays active until the
+   * piece's top-left is more than this many board cells from it, so small overshoots and
+   * jitter don't lose the drop.
+   */
+  holdCells: 1.5,
 } as const;
 
 export interface Point {
@@ -66,4 +72,20 @@ export function dropTarget(
   const col = Math.min(boardSize - shape.width, Math.max(0, Math.round(fx)));
   const row = Math.min(boardSize - shape.height, Math.max(0, Math.round(fy)));
   return { col, row };
+}
+
+/**
+ * Whether a previously legal `target` should still be held for a piece drawn at `origin`:
+ * the piece's top-left is within `INPUT.holdCells` (straight-line distance) of the
+ * target cell's top-left.
+ */
+export function holdsTarget(
+  layout: Layout,
+  origin: Point,
+  target: { col: number; row: number },
+): boolean {
+  const { x, y, cell } = layout.board;
+  const dx = (origin.x - x) / cell - target.col;
+  const dy = (origin.y - y) / cell - target.row;
+  return Math.hypot(dx, dy) <= INPUT.holdCells;
 }
