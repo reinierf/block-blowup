@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  bloomFor,
   cssVariables,
+  luminance,
   cssVariablesRule,
   currentThemeName,
   resolveThemeName,
@@ -72,6 +74,25 @@ describe('setTheme', () => {
       expect(store.get(THEME_KEY)).toBe('subdued');
     } finally {
       vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('bloomFor', () => {
+  it('measures luminance from black to white', () => {
+    expect(luminance('#000000')).toBe(0);
+    expect(luminance('#FFFFFF')).toBeCloseTo(1);
+    expect(luminance('#FFFF00')).toBeGreaterThan(luminance('#0000FF'));
+  });
+
+  it('keeps full bloom for dark colours and tones it down for light ones', () => {
+    const { blocks, bloom = 0 } = THEMES.neon;
+    for (const hex of [blocks.red, blocks.blue, blocks.purple]) {
+      expect(bloomFor(hex, bloom)).toBe(bloom);
+    }
+    for (const hex of [blocks.yellow, blocks.green, blocks.cyan]) {
+      expect(bloomFor(hex, bloom)).toBeLessThan(bloom * 0.7);
+      expect(bloomFor(hex, bloom)).toBeGreaterThan(bloom * 0.5);
     }
   });
 });

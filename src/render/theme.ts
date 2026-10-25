@@ -216,6 +216,28 @@ export function hexToNumber(hex: string): number {
   return parseInt(hex.slice(1), 16);
 }
 
+/** Relative luminance (WCAG) of a '#rrggbb' colour, 0 (black) to 1 (white). */
+export function luminance(hex: string): number {
+  const n = hexToNumber(hex);
+  const lin = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+}
+
+/** Luminance from which bloom starts to be scaled down (about that of orange #FF7A00). */
+export const BLOOM_REFERENCE_LUMINANCE = 0.3;
+
+/**
+ * Bloom strength for a colour: light colours (yellow, green, cyan) look far brighter at the
+ * same alpha, so their bloom is scaled down by the square root of reference / luminance.
+ * Colours at or below the reference luminance keep the full strength.
+ */
+export function bloomFor(hex: string, bloom: number): number {
+  return bloom * Math.min(1, Math.sqrt(BLOOM_REFERENCE_LUMINANCE / luminance(hex)));
+}
+
 /** Mix a '#rrggbb' colour toward white (amount > 0) or black (amount < 0). Returns a number. */
 export function shade(hex: string, amount: number): number {
   const n = hexToNumber(hex);

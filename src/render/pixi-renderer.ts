@@ -21,7 +21,7 @@ import type { DragState } from '../input';
 import { INPUT } from '../input-logic';
 import { trayCellFor, type Layout } from './layout';
 import type { GameOverCallbacks, Renderer, RendererOptions } from './renderer';
-import { hexToNumber, shade, theme } from './theme';
+import { bloomFor, hexToNumber, shade, theme } from './theme';
 
 /** Gap between neighbouring cells, as a fraction of a cell. */
 const CELL_GAP = 0.06;
@@ -236,7 +236,9 @@ export async function createPixiRenderer(
   function bloomTexture(color: string): Texture {
     let tex = bloomTextures.get(color);
     if (!tex && layout) {
-      const c = hexToNumber(blockColor(color));
+      const hex = blockColor(color);
+      const c = hexToNumber(hex);
+      const strength = bloomFor(hex, theme.bloom ?? 0);
       const s = layout.board.cell * (1 - 2 * CELL_GAP);
       const reach = layout.board.cell * BLOOM_REACH;
       const rings = 16;
@@ -252,7 +254,7 @@ export async function createPixiRenderer(
           g.roundRect(-e, -e, s + 2 * e, s + 2 * e, s * 0.16 + e).stroke({
             color: c,
             width: w + 0.5,
-            alpha: (theme.bloom ?? 0) * f * f,
+            alpha: strength * f * f,
           });
         }
       });

@@ -268,7 +268,9 @@ that matters — if two of your three pieces still fit, you keep playing.
   the cell textures and kept inside the gap between cells; a wider bloom (`bloom`, reaching
   0.45 cell past the block and fading quadratically, light outside the tube only) is drawn
   with additive blending over the board cells and with tray and dragged pieces, so
-  neighbouring blooms brighten each other. Settings → Theme (Vivid / Calm /
+  neighbouring blooms brighten each other. Light colours look far brighter at the same
+  alpha, so their bloom is scaled by √(0.3 / luminance) (yellow, green and cyan get about
+  60%; red, blue and purple the full strength). Settings → Theme (Vivid / Calm /
   Neon) switches live: the active theme object is updated in place, the CSS variables are
   re-applied and the renderer rebuilds its textures. `?theme=neon|vivid|subdued` also picks
   one. The choice is remembered in `localStorage` (`block-blowup.theme`), so the installed
