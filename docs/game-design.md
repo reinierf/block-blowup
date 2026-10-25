@@ -225,13 +225,13 @@ that matters — if two of your three pieces still fit, you keep playing.
 - **Touch speed-up:** on touch, the piece moves `INPUT.touchUpGain` (2.0) times as far
   as the finger above the point where the drag started, so a short swipe reaches the
   board (like the original). Below that point, and with the mouse, it follows 1:1.
+  Sideways, on touch, it moves `INPUT.touchSideGain` (1.4) times as far as the finger
+  in both directions.
 - **Snapping** (`dropTarget` in `src/input-logic.ts`): the piece's top-left snaps to the
   nearest cell when the piece is over the board or overhangs it by at most half a cell
   (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and
   releasing returns the piece to the tray.
 - **Holding the last legal target** (`holdsTarget`): when the piece is over a blocked
-  Sideways, on touch, it moves `INPUT.touchSideGain` (1.4) times as far as the finger
-  in both directions.
   spot or off the board, the most recent legal target stays active (ghost, preview and
   drop) until the piece's top-left is more than `INPUT.holdCells` (1.5) cells from it, so
   a small overshoot doesn't lose the drop.
