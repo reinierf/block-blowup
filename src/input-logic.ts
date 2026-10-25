@@ -13,6 +13,11 @@ export const INPUT = {
    * many times as far, so it reaches the board with a shorter swipe. Downward is 1:1.
    */
   touchUpGain: 2.0,
+  /**
+   * On touch, sideways finger movement (from where the drag started) moves the piece this
+   * many times as far, in both directions, so a short swipe also reaches the board's sides.
+   */
+  touchSideGain: 1.4,
   /** Seconds for a picked-up piece to grow from tray size to board size. */
   liftSeconds: 0.12,
   /**
@@ -34,23 +39,25 @@ export interface Point {
 }
 
 /**
- * Top-left of the dragged piece (board-cell sized) for a pointer position. `startY` is the
- * pointer's y where the drag began; on touch, movement above it is amplified.
+ * Top-left of the dragged piece (board-cell sized) for a pointer position. `start` is the
+ * pointer position where the drag began; on touch, movement above it and to either side
+ * of it is amplified.
  */
 export function pieceOrigin(
   layout: Layout,
   shape: Shape,
   pointer: Point,
   isTouch: boolean,
-  startY = pointer.y,
+  start: Point = pointer,
 ): Point {
   const cell = layout.board.cell;
   const w = shape.width * cell;
   const h = shape.height * cell;
   if (!isTouch) return { x: pointer.x - w / 2, y: pointer.y - h / 2 };
-  const dy = pointer.y - startY;
-  const y = startY + (dy < 0 ? dy * INPUT.touchUpGain : dy);
-  return { x: pointer.x - w / 2, y: y - h - cell * INPUT.touchLiftCells };
+  const x = start.x + (pointer.x - start.x) * INPUT.touchSideGain;
+  const dy = pointer.y - start.y;
+  const y = start.y + (dy < 0 ? dy * INPUT.touchUpGain : dy);
+  return { x: x - w / 2, y: y - h - cell * INPUT.touchLiftCells };
 }
 
 /**

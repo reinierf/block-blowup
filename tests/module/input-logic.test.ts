@@ -24,18 +24,30 @@ describe('pieceOrigin', () => {
   });
 
   it('moves the piece faster than an upward touch drag', () => {
-    const o = pieceOrigin(layout, sq, { x: 200, y: 300 }, true, 500);
+    const o = pieceOrigin(layout, sq, { x: 200, y: 300 }, true, { x: 200, y: 500 });
     expect(o.y).toBeCloseTo(500 - 200 * INPUT.touchUpGain - 2 * cell - INPUT.touchLiftCells * cell);
     expect(INPUT.touchUpGain).toBeGreaterThan(1);
   });
 
   it('follows a downward touch drag 1:1', () => {
-    const o = pieceOrigin(layout, sq, { x: 200, y: 600 }, true, 500);
+    const o = pieceOrigin(layout, sq, { x: 200, y: 600 }, true, { x: 200, y: 500 });
     expect(o.y).toBeCloseTo(600 - 2 * cell - INPUT.touchLiftCells * cell);
   });
 
+  it('moves the piece faster than a sideways touch drag, both ways', () => {
+    const right = pieceOrigin(layout, sq, { x: 250, y: 500 }, true, { x: 200, y: 500 });
+    expect(right.x).toBeCloseTo(200 + 50 * INPUT.touchSideGain - cell);
+    const left = pieceOrigin(layout, sq, { x: 150, y: 500 }, true, { x: 200, y: 500 });
+    expect(left.x).toBeCloseTo(200 - 50 * INPUT.touchSideGain - cell);
+    expect(INPUT.touchSideGain).toBeGreaterThan(1);
+    expect(INPUT.touchSideGain).toBeLessThan(INPUT.touchUpGain);
+  });
+
   it('does not amplify mouse drags', () => {
-    expect(pieceOrigin(layout, sq, { x: 200, y: 300 }, false, 500).y).toBe(300 - cell);
+    expect(pieceOrigin(layout, sq, { x: 200, y: 300 }, false, { x: 100, y: 500 })).toEqual({
+      x: 200 - cell,
+      y: 300 - cell,
+    });
   });
 });
 

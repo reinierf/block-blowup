@@ -225,6 +225,8 @@ that matters — if two of your three pieces still fit, you keep playing.
   (`INPUT.dropTolerance`). Farther away there is no target: no ghost is shown and
   releasing returns the piece to the tray.
 - **Holding the last legal target** (`holdsTarget`): when the piece is over a blocked
+  Sideways, on touch, it moves `INPUT.touchSideGain` (1.4) times as far as the finger
+  in both directions.
   spot or off the board, the most recent legal target stays active (ghost, preview and
   drop) until the piece's top-left is more than `INPUT.holdCells` (1.5) cells from it, so
   a small overshoot doesn't lose the drop.
