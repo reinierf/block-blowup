@@ -145,6 +145,27 @@ test('settings persist across reloads', async ({ page }) => {
   await expect(page.locator('input[name="motion"][value="on"]')).toBeChecked();
 });
 
+test('the theme switches live from Settings and persists', async ({ page }) => {
+  await openGame(page, 1);
+  const bgTop = () =>
+    page.evaluate(() => document.documentElement.style.getPropertyValue('--bg-top'));
+  const vivid = await bgTop();
+  await page.click('#open-settings');
+  await expect(page.locator('input[name="theme"][value="vivid"]')).toBeChecked();
+  await page.locator('input[name="theme"][value="neon"]').check({ force: true });
+  await expect.poll(bgTop).not.toBe(vivid);
+  const neon = await bgTop();
+  await page.click('#settings-done');
+  // The board still draws and plays after the renderer rebuilt its textures.
+  await playFirstFit(page, 1);
+
+  await page.reload();
+  await page.waitForFunction(() => !!window.__blowup?.layout());
+  expect(await bgTop()).toBe(neon);
+  await page.click('#start-settings');
+  await expect(page.locator('input[name="theme"][value="neon"]')).toBeChecked();
+});
+
 test('settings opened from the HUD return to the game', async ({ page }) => {
   await openGame(page, 1);
   await page.click('#open-settings');

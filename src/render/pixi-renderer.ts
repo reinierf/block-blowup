@@ -8,6 +8,7 @@ import {
   Graphics,
   Particle,
   ParticleContainer,
+  Rectangle,
   Sprite,
   Text,
   Texture,
@@ -122,10 +123,25 @@ export async function createPixiRenderer(
 
   // --- Textures ------------------------------------------------------------------------
 
-  function bake(draw: (g: Graphics) => void): Texture {
+  /**
+   * Room around each cell texture for the block glow (0 without one). Every cell-sized
+   * texture gets the same margin, so sprites can swap textures; sprites sit `glowPad` up
+   * and left of the cell.
+   */
+  let glowPad = 0;
+
+  function bake(draw: (g: Graphics) => void, size?: number): Texture {
     const g = new Graphics();
     draw(g);
-    const tex = app.renderer.generateTexture({ target: g, resolution: app.renderer.resolution });
+    const frame =
+      size !== undefined && glowPad > 0
+        ? new Rectangle(-glowPad, -glowPad, size + 2 * glowPad, size + 2 * glowPad)
+        : undefined;
+    const tex = app.renderer.generateTexture({
+      target: g,
+      resolution: app.renderer.resolution,
+      frame,
+    });
     g.destroy();
     return tex;
   }
@@ -135,7 +151,29 @@ export async function createPixiRenderer(
     return theme.blocks[color as keyof typeof theme.blocks] ?? theme.textSecondary;
   }
 
-  /** Bevelled block: lighter top-left edge, darker bottom-right, soft gloss. */
+  /**
+   * A neon tube along `path`: wide faint halo strokes, the coloured tube, a white-hot core.
+   * `width` is the tube's; the widest halo is `width * 4.5`.
+   */
+  function neonTube(g: Graphics, path: () => void, color: number, width: number): void {
+    for (const [k, a] of [
+      [4.5, 0.07],
+      [3.2, 0.12],
+      [2.2, 0.22],
+    ] as const) {
+      path();
+      g.stroke({ color, width: width * k, alpha: a * theme.glow });
+    }
+    path();
+    g.stroke({ color, width });
+    path();
+    g.stroke({ color: 0xffffff, width: width * 0.38, alpha: theme.rim });
+  }
+
+  /**
+   * Block texture. 'bevel': lighter top-left edge, darker bottom-right, soft gloss, optional
+   * rim and halo. 'tube': a neon outline around a dark, faintly tinted inside.
+   */
   function blockTexture(color: string): Texture {
     let tex = blockTextures.get(color);
     if (!tex && layout) {
@@ -144,6 +182,25 @@ export async function createPixiRenderer(
       const r = s * 0.16;
       const b = Math.max(1, s * 0.09);
       tex = bake((g) => {
+        if (theme.blockStyle === 'tube') {
+          const w = Math.max(1.5, s * 0.08);
+          // Inset so the halo fits inside the cell plus its margin.
+          const i = w * 1.1;
+          const c = hexToNumber(hex);
+          g.roundRect(i, i, s - 2 * i, s - 2 * i, r).fill({ color: c, alpha: 0.16 });
+          const path = () => g.roundRect(i, i, s - 2 * i, s - 2 * i, r);
+          neonTube(g, path, c, w);
+          return;
+        }
+        // Halo: rings fading outward, inside the gap so neighbours never cover it.
+        const rings = 6;
+        for (let k = rings; k >= 1; k--) {
+          const e = (glowPad * k) / rings;
+          g.roundRect(-e, -e, s + 2 * e, s + 2 * e, r + e).fill({
+            color: hexToNumber(hex),
+            alpha: theme.glow * 0.3 * (1 - (k - 1) / rings),
+          });
+        }
         g.roundRect(0, 0, s, s, r).fill(shade(hex, -theme.bevelDark));
         g.roundRect(0, 0, s - b, s - b, r).fill(shade(hex, theme.bevelLight));
         g.roundRect(b, b, s - 2 * b, s - 2 * b, r * 0.75).fill(hexToNumber(hex));
@@ -151,7 +208,15 @@ export async function createPixiRenderer(
           color: 0xffffff,
           alpha: theme.gloss,
         });
-      });
+        if (theme.rim > 0) {
+          const w = Math.max(1, s * 0.035);
+          g.roundRect(w / 2, w / 2, s - w, s - w, r).stroke({
+            color: 0xffffff,
+            width: w,
+            alpha: theme.rim,
+          });
+        }
+      }, s);
       blockTextures.set(color, tex);
     }
     return tex ?? Texture.EMPTY;
@@ -165,10 +230,20 @@ export async function createPixiRenderer(
     }
     if (!layout) return;
     const s = layout.board.cell * (1 - 2 * CELL_GAP);
-    emptyTexture = bake((g) =>
-      g.roundRect(0, 0, s, s, s * 0.16).fill(hexToNumber(theme.emptyCell)),
-    );
-    flashTexture = bake((g) => g.roundRect(0, 0, s, s, s * 0.16).fill(hexToNumber(theme.text)));
+    glowPad = theme.glow > 0 ? layout.board.cell * CELL_GAP * 1.8 : 0;
+    emptyTexture = bake((g) => {
+      g.roundRect(0, 0, s, s, s * 0.16).fill(hexToNumber(theme.emptyCell));
+      // Tubes: a faint grid line in the rim colour, like an unlit tube.
+      if (theme.blockStyle === 'tube' && theme.boardRim) {
+        const w = Math.max(1, s * 0.03);
+        g.roundRect(w / 2, w / 2, s - w, s - w, s * 0.16).stroke({
+          color: hexToNumber(theme.boardRim),
+          width: w,
+          alpha: 0.18,
+        });
+      }
+    }, s);
+    flashTexture = bake((g) => g.roundRect(0, 0, s, s, s * 0.16).fill(hexToNumber(theme.text)), s);
     particleTexture = bake((g) => g.rect(0, 0, 8, 8).fill(0xffffff));
   }
 
@@ -187,11 +262,20 @@ export async function createPixiRenderer(
 
     const b = next.board;
     const pad = b.cell * 0.18;
-    panel
-      .clear()
-      .roundRect(b.x - pad, b.y - pad, b.size + 2 * pad, b.size + 2 * pad, b.cell * 0.3)
-      .fill(hexToNumber(theme.boardPanel))
-      .stroke({ color: shade(theme.boardPanel, -0.35), width: 2, alpha: 0.6, alignment: 1 });
+    const rim = () =>
+      panel.roundRect(b.x - pad, b.y - pad, b.size + 2 * pad, b.size + 2 * pad, b.cell * 0.3);
+    panel.clear();
+    rim().fill(hexToNumber(theme.boardPanel));
+    if (theme.boardRim && theme.glow > 0) {
+      neonTube(panel, rim, hexToNumber(theme.boardRim), Math.max(2, b.cell * 0.07));
+    } else {
+      rim().stroke({
+        color: theme.boardRim ? hexToNumber(theme.boardRim) : shade(theme.boardPanel, -0.35),
+        width: 2,
+        alpha: theme.boardRim ? 1 : 0.6,
+        alignment: 1,
+      });
+    }
 
     cellLayer.removeChildren().forEach((c) => c.destroy());
     cellSprites = [];
@@ -199,7 +283,7 @@ export async function createPixiRenderer(
       for (let col = 0; col < 8; col++) {
         const sp = new Sprite(emptyTexture);
         const p = cellPos(col, row);
-        sp.position.set(p.x, p.y);
+        sp.position.set(p.x - glowPad, p.y - glowPad);
         cellLayer.addChild(sp);
         cellSprites.push(sp);
       }
@@ -230,7 +314,10 @@ export async function createPixiRenderer(
     for (const [cx, cy] of cells) {
       const sp = new Sprite(tex);
       sp.scale.set(scale);
-      sp.position.set(cx * cell + cell * CELL_GAP, cy * cell + cell * CELL_GAP);
+      sp.position.set(
+        cx * cell + cell * CELL_GAP - glowPad * scale,
+        cy * cell + cell * CELL_GAP - glowPad * scale,
+      );
       c.addChild(sp);
     }
     return c;
@@ -363,7 +450,7 @@ export async function createPixiRenderer(
           drag.preview?.cols.includes(drag.target.col + cx);
         sp.alpha = drag.valid ? (inLine ? 0.9 : 0.4) : 0.35;
         const p = cellPos(drag.target.col + cx, drag.target.row + cy);
-        sp.position.set(p.x, p.y);
+        sp.position.set(p.x - glowPad, p.y - glowPad);
         sp.visible = true;
         used++;
       }
@@ -397,13 +484,14 @@ export async function createPixiRenderer(
         fontWeight: '800',
         fontSize: Math.round(size),
         fill: hexToNumber(color),
+        dropShadow:
+          theme.glow > 0
+            ? { color: hexToNumber(color), blur: size * 0.25, distance: 0, alpha: theme.glow }
+            : undefined,
       },
       anchor: 0.5,
     });
   }
-
-  /** Every block colour, for multicoloured particles. */
-  const particleTints = Object.values(theme.blocks).map(hexToNumber);
 
   /**
    * One particle per spawn, each in a random block colour unless `tint` is given. Spawns
@@ -417,8 +505,10 @@ export async function createPixiRenderer(
     const parts: Burst['parts'] = [];
     const b = layout!.board;
     const { x0: bx = b.x, y0: by = b.y, unit: cell = b.cell, layer = particles } = o;
+    // Every block colour, for multicoloured particles (read each time: themes switch).
+    const tints = Object.values(theme.blocks);
     for (const sp of spawns) {
-      const tint = o.tint ?? particleTints[Math.floor(Math.random() * particleTints.length)]!;
+      const tint = o.tint ?? hexToNumber(tints[Math.floor(Math.random() * tints.length)]!);
       const size = (cell * (0.12 + Math.random() * 0.14)) / 8;
       const p = new Particle({
         texture: particleTexture,

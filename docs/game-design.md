@@ -258,8 +258,19 @@ that matters — if two of your three pieces still fit, you keep playing.
   yellow `#F8CB3A`, green `#5DCB48`, cyan `#3CC7EE`, blue `#3E72E6`, purple `#A05BDE`),
   text `#FFFFFF` / `#C9D4F2`, accent (gold) `#FFC83D`. Blocks are bevelled squares (lighter
   top-left edge, darker bottom-right, gloss on the upper half) with strong contrast. The
-  calmer `SUBDUED` theme from HANDOVER.md §3.5 is kept as an alternative. The DOM HUD and overlays
-  read the same tokens through CSS custom properties.
+  calmer `SUBDUED` theme from HANDOVER.md §3.5 is kept as an alternative. `NEON` is a dark
+  variant drawn as fluorescent tubes (`blockStyle: 'tube'`): near-black gradient
+  (`#05030F` → `#12062A`); each block is a rounded outline in its colour with a white-hot
+  core and a wide faint halo, around a dark, faintly tinted inside (red `#FF1F4F`, orange
+  `#FF7A00`, yellow `#EEFF00`, green `#00FF85`, cyan `#00F0FF`, blue `#4D8CFF`, purple
+  `#B026FF`). The board rim is a hot-pink tube, empty cells have a faint pink outline (an
+  unlit tube), and the score, titles and score popups glow. The halo is baked into the
+  cell textures and kept inside the gap between cells. Settings → Theme (Vivid / Calm /
+  Neon) switches live: the active theme object is updated in place, the CSS variables are
+  re-applied and the renderer rebuilds its textures. `?theme=neon|vivid|subdued` also picks
+  one. The choice is remembered in `localStorage` (`block-blowup.theme`), so the installed
+  PWA follows; the build (inlined first-paint CSS, manifest, icons) always uses `VIVID`.
+  The DOM HUD and overlays read the same tokens through CSS custom properties.
 - **Piece colours:** each dealt hand gets three different colours, picked by the seeded
   RNG (`Generator`); placed cells keep their colour. The game layer only knows colour
   names; the theme maps names to colours.
@@ -353,7 +364,8 @@ manager and haptics only carry the plan out. Numbers live in `FEEDBACK` (plan.ts
   block particles as the glow blooms behind the logo; the badge and buttons pop in. A tap skips to the end. Skipped entirely
   when reducing motion; returning to the menu shows the settled screen.
 - **Settings** (from the start screen or the HUD gear): Sound, Vibration (disabled with a
-  note where the device can't vibrate), Reduce motion (System / On / Off). Changes apply
+  note where the device can't vibrate), Reduce motion (System / On / Off), Theme (Vivid /
+  Calm / Neon; see Theme above). On short screens the card scrolls. Changes apply
   and save immediately. Opened from the HUD gear it is also the **pause menu**: **Restart**
   (takes a second tap, "Tap again"; starts a new game) and **Menu** (to the start screen;
   the game stays saved, so Continue resumes it) side by side, and **Resume** in place of

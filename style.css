@@ -129,7 +129,9 @@ body {
   font-size: 31px;
   font-weight: 700;
   line-height: 1;
-  text-shadow: 2px 3px 3px var(--score-shadow);
+  text-shadow:
+    2px 3px 3px var(--score-shadow),
+    var(--text-glow);
   font-variant-numeric: tabular-nums;
 }
 
@@ -147,7 +149,9 @@ body {
   font-size: 62px;
   font-weight: 700;
   line-height: 1;
-  text-shadow: 2px 3px 3px var(--score-shadow);
+  text-shadow:
+    2px 3px 3px var(--score-shadow),
+    var(--text-glow);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -189,6 +193,9 @@ body {
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   z-index: 10;
+  /* Short screens: a tall card (Settings) scrolls instead of being cut off. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -213,7 +220,9 @@ body {
   font-family: 'Nunito', system-ui, sans-serif;
   font-weight: 700;
   font-size: 32px;
-  text-shadow: 2px 3px 3px var(--score-shadow);
+  text-shadow:
+    2px 3px 3px var(--score-shadow),
+    var(--text-glow);
 }
 
 .screen-card .title {
@@ -267,7 +276,9 @@ body {
   font-size: 64px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 2px 3px 3px var(--score-shadow);
+  text-shadow:
+    2px 3px 3px var(--score-shadow),
+    var(--text-glow);
 }
 
 .over-card .best-line {
@@ -481,7 +492,9 @@ body {
   font-weight: 700;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 2px 3px 3px var(--score-shadow);
+  text-shadow:
+    2px 3px 3px var(--score-shadow),
+    var(--text-glow);
 }
 
 .splash-actions {
@@ -781,6 +794,11 @@ body {
   margin: 4px 0 12px;
   padding: 0;
   border: none;
+}
+
+/* Two in a row (Reduce motion, Theme): no double spacing between them. */
+.segmented + .segmented {
+  margin-top: -8px;
 }
 
 /* The label sits above the track, aligned with the toggle labels, not inside it. */

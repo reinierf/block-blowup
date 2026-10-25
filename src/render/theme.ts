@@ -2,6 +2,9 @@
 // Every colour in the game lives here. The default theme, VIVID, follows the original's
 // look: royal-blue background, dark navy board, saturated blocks with strong bevels.
 // SUBDUED is the calmer variant from HANDOVER.md §3.5 (lower saturation, softer gloss).
+// NEON is a dark variant: near-black background, blocks drawn as glowing fluorescent tubes.
+// Settings switches between them at runtime (setTheme); `?theme=neon|vivid|subdued` also
+// picks one. The choice is remembered, so the installed PWA follows.
 
 import type { PieceColor } from '../game/pieces';
 
@@ -10,6 +13,8 @@ export interface Theme {
   bgTop: string;
   bgBottom: string;
   boardPanel: string;
+  /** Outline around the board panel; defaults to a darker shade of the panel. */
+  boardRim?: string;
   emptyCell: string;
   text: string;
   textSecondary: string;
@@ -35,6 +40,14 @@ export interface Theme {
   bevelDark: number;
   /** Opacity of the soft gloss on the upper half of a block. */
   gloss: number;
+  /** Opacity of a thin white outline just inside each block (0 = none). */
+  rim: number;
+  /** Opacity of a coloured halo around each block and the board rim (0 = none). */
+  glow: number;
+  /** How blocks are drawn: bevelled squares (default) or neon tube outlines. */
+  blockStyle?: 'bevel' | 'tube';
+  /** Extra CSS text-shadow on the score and titles, e.g. a neon glow. */
+  textGlow?: string;
 }
 
 export const SUBDUED: Theme = {
@@ -65,6 +78,8 @@ export const SUBDUED: Theme = {
   bevelLight: 0.16,
   bevelDark: 0.2,
   gloss: 0.1,
+  rim: 0,
+  glow: 0,
 };
 
 export const VIVID: Theme = {
@@ -96,9 +111,102 @@ export const VIVID: Theme = {
   bevelLight: 0.3,
   bevelDark: 0.32,
   gloss: 0.18,
+  rim: 0,
+  glow: 0,
 };
 
-export const theme: Theme = VIVID;
+export const NEON: Theme = {
+  bgTop: '#05030F',
+  bgBottom: '#12062A',
+  boardPanel: '#06051A',
+  boardRim: '#FF2BD6',
+  emptyCell: '#0B0A22',
+  text: '#FFFFFF',
+  textSecondary: '#B9B4F0',
+  accent: '#FF2BD6',
+  scrim: 'rgba(4, 3, 14, 0.78)',
+  scoreShadow: 'rgba(0, 0, 0, 0)',
+  dealSparkle: '#FFFFFF',
+  button: '#00FF85',
+  buttonText: '#06051A',
+  ghostValid: '#FFFFFF',
+  ghostInvalid: '#FF1F4F',
+  gameOverBlock: '#34345A',
+  blocks: {
+    red: '#FF1F4F',
+    orange: '#FF7A00',
+    yellow: '#EEFF00',
+    green: '#00FF85',
+    cyan: '#00F0FF',
+    blue: '#4D8CFF',
+    purple: '#B026FF',
+  },
+  bevelLight: 0.7,
+  bevelDark: 0.3,
+  gloss: 0.5,
+  rim: 0.9,
+  glow: 1,
+  blockStyle: 'tube',
+  textGlow: '0 0 3px #FF2BD6, 0 0 10px #FF2BD6, 0 0 24px rgba(255, 43, 214, 0.7)',
+};
+
+export const THEMES = { vivid: VIVID, subdued: SUBDUED, neon: NEON } as const;
+export type ThemeName = keyof typeof THEMES;
+export const THEME_KEY = 'block-blowup.theme';
+
+export function isThemeName(name: string | null): name is ThemeName {
+  return name !== null && Object.hasOwn(THEMES, name);
+}
+
+/** The URL parameter wins, then the remembered choice, then VIVID. */
+export function resolveThemeName(param: string | null, stored: string | null): ThemeName {
+  if (isThemeName(param)) return param;
+  if (isThemeName(stored)) return stored;
+  return 'vivid';
+}
+
+/** In a browser: read `?theme=` and the remembered choice, remembering a valid parameter. */
+function selectedThemeName(): ThemeName {
+  if (typeof location === 'undefined') return 'vivid';
+  const param = new URLSearchParams(location.search).get('theme');
+  let stored: string | null = null;
+  try {
+    stored = globalThis.localStorage?.getItem(THEME_KEY) ?? null;
+    if (isThemeName(param)) globalThis.localStorage?.setItem(THEME_KEY, param);
+  } catch {
+    // Storage blocked: the parameter still applies to this page load.
+  }
+  return resolveThemeName(param, stored);
+}
+
+let currentName: ThemeName = selectedThemeName();
+
+/**
+ * The active theme. A copy, so setTheme can swap its contents in place and every module
+ * holding this reference sees the new colours.
+ */
+export const theme: Theme = structuredClone(THEMES[currentName]);
+
+export function currentThemeName(): ThemeName {
+  return currentName;
+}
+
+/**
+ * Switch the active theme in place and remember the choice. Callers redraw: the renderer's
+ * textures (resize) and the DOM's CSS variables (cssVariables).
+ */
+export function setTheme(name: ThemeName): void {
+  currentName = name;
+  const next = structuredClone(THEMES[name]);
+  // Optional tokens the new theme lacks (e.g. blockStyle) must not linger.
+  for (const key of Object.keys(theme)) if (!(key in next)) Reflect.deleteProperty(theme, key);
+  Object.assign(theme, next);
+  try {
+    globalThis.localStorage?.setItem(THEME_KEY, name);
+  } catch {
+    // Storage blocked: the theme still applies until the page reloads.
+  }
+}
 
 /** '#rrggbb' → 0xrrggbb, for Pixi. */
 export function hexToNumber(hex: string): number {
@@ -125,6 +233,7 @@ export function cssVariables(t: Theme = theme): Record<string, string> {
     '--panel': t.boardPanel,
     '--scrim': t.scrim,
     '--score-shadow': t.scoreShadow,
+    '--text-glow': t.textGlow ?? '0 0 0 transparent',
     '--button': t.button,
     '--button-text': t.buttonText,
     // Block colours, for the splash logo and its burst.

@@ -14,7 +14,7 @@ import { createInput, type DragState } from './input';
 import { setupPwa } from './pwa';
 import { computeLayout, fitScale, type Insets, type Layout } from './render/layout';
 import type { Renderer } from './render/renderer';
-import { cssVariables, theme } from './render/theme';
+import { cssVariables, currentThemeName, isThemeName, setTheme, theme } from './render/theme';
 import { loadSettings, reduceMotion, saveSettings, type ReducedMotionSetting } from './settings';
 import { setupSplash } from './splash';
 import {
@@ -59,10 +59,13 @@ const newBestEl = el('new-best');
 const debugEl = el('debug');
 
 // --- Theme -------------------------------------------------------------------
-for (const [name, value] of Object.entries(cssVariables())) {
-  document.documentElement.style.setProperty(name, value);
+function applyThemeToPage(): void {
+  for (const [name, value] of Object.entries(cssVariables())) {
+    document.documentElement.style.setProperty(name, value);
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.bgTop);
 }
-document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.bgTop);
+applyThemeToPage();
 
 // --- Options (seed and test mode exist only in dev/test builds) ----------------
 const params = new URLSearchParams(location.search);
@@ -389,6 +392,9 @@ function openSettings(fromStart: boolean): void {
   for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"]')) {
     r.checked = r.value === settings.reducedMotion;
   }
+  for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) {
+    r.checked = r.value === currentThemeName();
+  }
   // Opened from the HUD, Settings is the pause menu too.
   pauseActions.hidden = fromStart;
   settingsDone.textContent = fromStart ? 'Done' : 'Resume';
@@ -458,6 +464,15 @@ for (const r of document.querySelectorAll<HTMLInputElement>('input[name="motion"
   r.addEventListener('change', () => {
     if (r.checked) settings.reducedMotion = r.value as ReducedMotionSetting;
     applySettings();
+  });
+}
+// Theme: applied live. The renderer rebuilds its textures on resize.
+for (const r of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) {
+  r.addEventListener('change', () => {
+    if (!r.checked || !isThemeName(r.value)) return;
+    setTheme(r.value);
+    applyThemeToPage();
+    if (layout) renderer?.resize(layout);
   });
 }
 // --- Fullscreen toggle (browser tabs only) -------------------------------------
