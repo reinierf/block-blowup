@@ -23,7 +23,11 @@ export function collectDealInputs(seeds: number): DealInput[] {
         // before this move's placement and clears).
         inputs.push({
           rows: rowsFromBoard(game.board),
-          ctx: { score: game.score, handsWithoutClear: game.handsWithoutClear, combo: game.combo },
+          ctx: {
+            linesCleared: game.linesCleared,
+            handsWithoutClear: game.handsWithoutClear,
+            combo: game.combo,
+          },
         });
       }
       const move = chooseMove(game)!;
@@ -32,7 +36,11 @@ export function collectDealInputs(seeds: number): DealInput[] {
     // The final, crowded board: the hardest case for the solver.
     inputs.push({
       rows: rowsFromBoard(game.board),
-      ctx: { score: game.score, handsWithoutClear: game.handsWithoutClear, combo: game.combo },
+      ctx: {
+        linesCleared: game.linesCleared,
+        handsWithoutClear: game.handsWithoutClear,
+        combo: game.combo,
+      },
     });
   }
   return inputs;

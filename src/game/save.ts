@@ -20,6 +20,8 @@ export interface SavedGame {
   /** Shape names and colours; null for placed slots. */
   hand: ({ shape: string; color: string } | null)[];
   score: number;
+  /** Lines cleared this game. Saves from before it was tracked restore it as 0. */
+  linesCleared: number;
   combo: number;
   movesSinceClear: number;
   bestCombo: number;
@@ -38,6 +40,7 @@ export function saveGame(game: Game, rngState: number): SavedGame {
     board: game.board.grid.map((row) => [...row]),
     hand: game.hand.map((p) => (p ? { shape: p.shape.name, color: p.color } : null)),
     score: game.score,
+    linesCleared: game.linesCleared,
     combo: game.combo,
     movesSinceClear: game.movesSinceClear,
     bestCombo: game.bestCombo,
@@ -94,5 +97,7 @@ export function parseSavedGame(raw: unknown, size = 8): SavedGame | null {
   }
   if (hand.every((p) => p === null)) return null; // a live game always has a piece in hand
 
+  if (o.linesCleared === undefined) return { ...(raw as SavedGame), linesCleared: 0 };
+  if (!isInt(o.linesCleared)) return null;
   return raw as SavedGame;
 }

@@ -58,8 +58,9 @@ Every number below lives in `src/game/config.ts`.
 - **Seeded RNG.** All randomness goes through the RNG passed to `new Game({ rng })`. The
   app uses `Mulberry32` (`src/game/rng.ts`) seeded from `crypto.getRandomValues`; its
   state is a single uint32, so a game can be saved and replayed exactly.
-- **Difficulty** is a value 0–1 from the score, piecewise linear through
-  `DIFFICULTY_CURVE`: 0 → 0, 1500 → 0.2, 4500 → 0.45, 9000 → 0.7, 18000+ → 1
+- **Difficulty** is a value 0–1 from the lines cleared this game (not the score, so
+  combos and board clears don't speed it up), piecewise linear through
+  `DIFFICULTY_CURVE`: 0 → 0, 20 lines → 0.2, 45 → 0.45, 80 → 0.6, 180+ → 1
   (`difficultyFor` in `src/game/difficulty.ts`).
 - **Weights per shape family** (`FAMILY_WEIGHTS`, easy → hard, linear in difficulty). A
   family's weight is split equally between its orientations. The 1×1 single is rare early
@@ -92,16 +93,16 @@ Every number below lives in `src/game/config.ts`.
 - **Assist:** each deal rolls whether the hand must offer a line clear. The chance
   (`assistChance` in `src/game/difficulty.ts`) is the sum of four terms, capped at
   `ASSIST_MAX` (0.9):
-  - base: 0.6 at d=0 falling to 0.15 at d=1 (`ASSIST_BASE`);
+  - base: 0.7 at d=0 falling to 0.25 at d=1 (`ASSIST_BASE`);
   - fill: up to +0.6 as the board fills from half to full (`ASSIST_FILL_FROM`,
     `ASSIST_FILL_GAIN`);
   - drought: +0.2 per hand without a clear (`ASSIST_DROUGHT_GAIN`);
-  - combo: +0.3 while a combo streak is running (`ASSIST_COMBO_GAIN`), to help keep it alive.
+  - combo: +0.4 while a combo streak is running (`ASSIST_COMBO_GAIN`), to help keep it alive.
 
   The roll is always consumed. On a hit:
   - Below `ASSIST_HAND_FROM` (d < 0.5) one piece that clears a line is dealt, in a
     random slot. It is picked by its normal weight × (most lines it clears at once) ^
-    generosity, which goes from 1.5 at d=0 to 0 at d=1 (`ASSIST_GENEROSITY`), so early
+    generosity, which goes from 1.5 at d=0 to 0.2 at d=1 (`ASSIST_GENEROSITY`), so early
     hands favour pieces that clear two lines. The other two pieces are drawn normally, and
     the hand still goes through the fairness rules.
   - From d = 0.5 up the help is subtler: up to `ASSIST_HAND_TRIES` (8) normal hands are
@@ -385,10 +386,11 @@ missing, blocked or corrupt data falls back to "nothing saved".
 - **Settings:** `block-blowup.settings` (`src/settings.ts`).
 - **Game in progress:** `block-blowup.game`, saved after every move and removed at game
   over (`src/game/save.ts` serialises, `src/storage.ts` stores). A save holds the board,
-  hand (shape names and colours), score, combo, misses since the last clear, best combo,
+  hand (shape names and colours), score, lines cleared, combo, misses since the last clear, best combo,
   the mercy-rule counters, status and the **RNG state**, so a resumed game continues
   exactly as if it had never stopped (property-tested). Saves carry a version (`v: 1`);
-  anything invalid or of another version is ignored.
+  anything invalid or of another version is ignored. Saves from before lines cleared was
+  tracked restore it as 0.
 
 ## 9a. PWA
 
@@ -408,7 +410,7 @@ missing, blocked or corrupt data falls back to "nothing saved".
 | `src/game/pieces.ts`          | Shape set (with families), piece colour names                           |
 | `src/game/config.ts`          | Every tunable gameplay number                                           |
 | `src/game/rng.ts`             | Seeded RNG (mulberry32), weighted picks                                 |
-| `src/game/difficulty.ts`      | Difficulty from score, P(solvable)                                      |
+| `src/game/difficulty.ts`      | Difficulty from lines cleared, P(solvable)                              |
 | `src/game/generator.ts`       | Hand dealing: weights, fairness, mercy                                  |
 | `src/game/solver.ts`          | Can a whole hand be placed? (bounded DFS)                               |
 | `src/game/bitboard.ts`        | Packed board representation for search                                  |

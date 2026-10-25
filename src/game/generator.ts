@@ -42,7 +42,8 @@ import { canPlaceAll, searchHand } from './solver';
 export const HAND_SIZE = 3;
 
 export interface DealContext {
-  score: number;
+  /** Lines cleared so far this game (drives difficulty). */
+  linesCleared: number;
   /** Completed hands in a row during which nothing was cleared. */
   handsWithoutClear: number;
   /** Current combo streak (0 or absent: none running). */
@@ -119,7 +120,7 @@ export class Generator {
   }
 
   deal(rows: Rows, ctx: DealContext): Deal {
-    const difficulty = difficultyFor(ctx.score);
+    const difficulty = difficultyFor(ctx.linesCleared);
     const fill = filledCount(rows) / (rows.length * rows.length);
     const mercyReason: MercyReason =
       fill > MERCY_FILL ? 'fill' : ctx.handsWithoutClear >= MERCY_HANDS ? 'drought' : null;

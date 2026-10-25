@@ -274,7 +274,7 @@ function updateDebug(): void {
   const d = game.lastDeal;
   debugEl.textContent = [
     `seed ${seed}`,
-    `difficulty ${difficultyFor(game.score).toFixed(2)}`,
+    `difficulty ${difficultyFor(game.linesCleared).toFixed(2)}`,
     d
       ? `deal: redraws ${d.redraws}, mercy ${d.mercyReason ?? 'no'}${d.mercy ? ' (boosted)' : ''}`
       : 'deal: (restored)',

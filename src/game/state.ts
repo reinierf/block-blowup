@@ -68,6 +68,8 @@ export class Game {
   /** Three slots; null once a slot's piece has been placed. */
   hand: (HandPiece | null)[] = [null, null, null];
   score = 0;
+  /** Lines cleared this game (drives difficulty). */
+  linesCleared = 0;
   combo = 0;
   /** Placements in a row without a clear; the combo resets when this reaches COMBO_GRACE. */
   movesSinceClear = 0;
@@ -98,6 +100,7 @@ export class Game {
         : null,
     );
     this.score = state.score;
+    this.linesCleared = state.linesCleared;
     this.combo = state.combo;
     this.movesSinceClear = state.movesSinceClear;
     this.bestCombo = state.bestCombo;
@@ -111,6 +114,7 @@ export class Game {
     this.board.reset();
     this.hand = [null, null, null];
     this.score = 0;
+    this.linesCleared = 0;
     this.combo = 0;
     this.movesSinceClear = 0;
     this.bestCombo = 0;
@@ -125,7 +129,7 @@ export class Game {
   /** Deal a fresh hand of three from the generator. */
   dealHand(): DealInfo {
     const { shapes, colors, info } = this.generator.deal(rowsFromBoard(this.board), {
-      score: this.score,
+      linesCleared: this.linesCleared,
       handsWithoutClear: this.handsWithoutClear,
       combo: this.combo,
     });
@@ -162,6 +166,7 @@ export class Game {
 
     if (lines > 0) {
       this.handHadClear = true;
+      this.linesCleared += lines;
       this.combo += 1;
       this.movesSinceClear = 0;
       if (this.combo > this.bestCombo) this.bestCombo = this.combo;

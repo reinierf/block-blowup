@@ -30,6 +30,7 @@ function observe(game: Game) {
     board: game.board.grid,
     hand: game.hand.map((p) => (p ? [p.shape.name, p.color] : null)),
     score: game.score,
+    linesCleared: game.linesCleared,
     combo: game.combo,
     movesSinceClear: game.movesSinceClear,
     bestCombo: game.bestCombo,
@@ -112,6 +113,13 @@ describe('parseSavedGame', () => {
     expect(valid().v).toBe(SAVE_VERSION);
   });
 
+  it('restores lines cleared as 0 for saves from before it was tracked', () => {
+    const { linesCleared, ...old } = valid();
+    expect(linesCleared).toBe(0);
+    expect(parseSavedGame(old)?.linesCleared).toBe(0);
+    expect(parseSavedGame({ ...valid(), linesCleared: 12 })?.linesCleared).toBe(12);
+  });
+
   it.each([
     ['null', null],
     ['a string', 'save'],
@@ -121,6 +129,7 @@ describe('parseSavedGame', () => {
     ['a bad RNG state', { ...valid(), rngState: -1 }],
     ['a huge RNG state', { ...valid(), rngState: 2 ** 33 }],
     ['a fractional score', { ...valid(), score: 1.5 }],
+    ['negative lines cleared', { ...valid(), linesCleared: -1 }],
     ['a negative combo', { ...valid(), combo: -1 }],
     ['a missing field', { ...valid(), bestCombo: undefined }],
     ['a bad status', { ...valid(), status: 'paused' }],

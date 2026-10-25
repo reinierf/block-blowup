@@ -47,17 +47,17 @@ export const PRAISE_BY_LINES: readonly { minLines: number; word: string }[] = [
 // --- Piece generator (generator.ts) ----------------------------------------------------
 
 /**
- * Difficulty (0–1) as a piecewise-linear function of score: [score, difficulty] points,
- * ascending. Below the first point difficulty is 0; above the last it is 1.
- * Scaled ×3 when scoring moved to the measured combo formula (scores grew about 3×), which
- * keeps difficulty by move in the simulation where it was.
+ * Difficulty (0–1) as a piecewise-linear function of lines cleared this game:
+ * [lines, difficulty] points, ascending. Below the first point difficulty is 0; above the
+ * last it is 1. Lines rather than score, so combos and board clears don't speed it up.
+ * First matched to the old score curve, then stretched ~1.5× for longer games.
  */
-export const DIFFICULTY_CURVE: readonly (readonly [score: number, difficulty: number])[] = [
+export const DIFFICULTY_CURVE: readonly (readonly [lines: number, difficulty: number])[] = [
   [0, 0],
-  [1500, 0.2],
-  [4500, 0.45],
-  [9000, 0.7],
-  [18000, 1],
+  [20, 0.2],
+  [45, 0.45],
+  [80, 0.6],
+  [180, 1],
 ];
 
 /**
@@ -111,7 +111,7 @@ export const MERCY_BOOST = 4;
 // --- Assist (generator.ts) -------------------------------------------------------------
 
 /** Chance that a deal is forced to offer a line clear, at difficulty 0 and 1; linear between. */
-export const ASSIST_BASE: readonly [easy: number, hard: number] = [0.6, 0.15];
+export const ASSIST_BASE: readonly [easy: number, hard: number] = [0.7, 0.25];
 /** Board fill fraction from which the fill term starts adding to the assist chance. */
 export const ASSIST_FILL_FROM = 0.5;
 /** Extra assist chance at a full board; linear from ASSIST_FILL_FROM. */
@@ -119,14 +119,14 @@ export const ASSIST_FILL_GAIN = 0.6;
 /** Extra assist chance per hand in a row without a clear. */
 export const ASSIST_DROUGHT_GAIN = 0.2;
 /** Extra assist chance while a combo streak is running, to help keep it alive. */
-export const ASSIST_COMBO_GAIN = 0.3;
+export const ASSIST_COMBO_GAIN = 0.4;
 /** Upper bound on the assist chance. */
 export const ASSIST_MAX = 0.9;
 /**
  * Exponent on lines cleared when picking the helper piece, at difficulty 0 and 1. Above 0,
  * pieces that clear more lines at once are favoured.
  */
-export const ASSIST_GENEROSITY: readonly [easy: number, hard: number] = [1.5, 0];
+export const ASSIST_GENEROSITY: readonly [easy: number, hard: number] = [1.5, 0.2];
 /**
  * Difficulty from which the assist first looks for a natural hand that can clear a line
  * when played in some order (subtler help), before handing out a single clearing piece.

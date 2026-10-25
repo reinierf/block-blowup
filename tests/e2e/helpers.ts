@@ -131,6 +131,7 @@ export function nearlyOverSave(score: number) {
     board: Array.from({ length: 8 }, (_, y) => row(y)),
     hand: [{ shape: 'single', color: 'red' }, { shape: 'square3', color: 'green' }, null],
     score,
+    linesCleared: 0,
     combo: 0,
     movesSinceClear: 1,
     bestCombo: 0,

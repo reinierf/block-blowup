@@ -34,7 +34,7 @@ const CHECKER = rowsFromBoard(
     '#.#.#.#.',
   ]),
 );
-const ctx = { score: 0, handsWithoutClear: 0 };
+const ctx = { linesCleared: 0, handsWithoutClear: 0 };
 const assistOff: GeneratorOptions = { assistChance: () => ({ p: 0, reason: 'base' }) };
 const assistOn: GeneratorOptions = { assistChance: () => ({ p: 1, reason: 'base' }) };
 
@@ -81,17 +81,17 @@ describe('shapeWeights', () => {
   });
 
   it('shows up in the dealt pieces', () => {
-    const count = (score: number) => {
+    const count = (linesCleared: number) => {
       const g = new Generator(new Mulberry32(1).next);
       let hard = 0;
       for (let i = 0; i < 400; i++) {
         hard += g
-          .deal(EMPTY, { score, handsWithoutClear: 0 })
+          .deal(EMPTY, { linesCleared, handsWithoutClear: 0 })
           .shapes.filter((s) => ['square3', 'line5', 'bigL', 'SZ'].includes(s.family)).length;
       }
       return hard;
     };
-    expect(count(100_000)).toBeGreaterThan(count(0) * 1.8);
+    expect(count(1000)).toBeGreaterThan(count(0) * 1.8);
   });
 });
 
@@ -101,12 +101,12 @@ describe('Generator.deal', () => {
       fc.property(
         arbBoard,
         fc.nat(2 ** 31),
-        fc.nat(10_000),
+        fc.nat(100),
         fc.nat(4),
-        (board, seed, score, dry) => {
+        (board, seed, linesCleared, dry) => {
           const rows = rowsFromBoard(board);
           const { shapes } = new Generator(new Mulberry32(seed).next).deal(rows, {
-            score,
+            linesCleared,
             handsWithoutClear: dry,
           });
           expect(shapes).toHaveLength(3);
@@ -149,7 +149,7 @@ describe('Generator.deal', () => {
   it('sometimes skips the solvability requirement at high difficulty', () => {
     const g = new Generator(new Mulberry32(3).next);
     const deals = Array.from({ length: 300 }, () =>
-      g.deal(EMPTY, { score: 1e6, handsWithoutClear: 0 }),
+      g.deal(EMPTY, { linesCleared: 1000, handsWithoutClear: 0 }),
     );
     const skipped = deals.filter((d) => !d.info.requireSolvable).length;
     expect(skipped).toBeGreaterThan(50); // expected ≈ 30% of 300
@@ -235,7 +235,7 @@ describe('mercy rule', () => {
 
   it('fires after MERCY_HANDS hands without a clear', () => {
     const { info } = new Generator(new Mulberry32(1).next).deal(nearLine, {
-      score: 0,
+      linesCleared: 0,
       handsWithoutClear: 2,
     });
     expect(info).toMatchObject({ mercy: true, mercyReason: 'drought' });
@@ -260,7 +260,7 @@ describe('mercy rule', () => {
 
   it('reports the reason but no boost when no piece could complete a line', () => {
     const { info } = new Generator(new Mulberry32(1).next).deal(EMPTY, {
-      score: 0,
+      linesCleared: 0,
       handsWithoutClear: 5,
     });
     expect(info).toMatchObject({ mercy: false, mercyReason: 'drought' });
@@ -273,7 +273,7 @@ describe('mercy rule', () => {
       let completing = 0;
       let total = 0;
       for (let i = 0; i < 600; i++) {
-        for (const s of g.deal(nearLine, { score: 0, handsWithoutClear }).shapes) {
+        for (const s of g.deal(nearLine, { linesCleared: 0, handsWithoutClear }).shapes) {
           total++;
           if (completesALine(nearLine, s)) completing++;
         }
@@ -294,16 +294,16 @@ describe('assist', () => {
   const nearTwo = rowsFromBoard(
     boardFrom(['######..', '######..', ...Array<string>(6).fill('........')]),
   );
-  const HARD = 1e6; // score at difficulty 1
+  const HARD = 1000; // lines cleared at difficulty 1
 
   it('below ASSIST_HAND_FROM, deals a piece that clears whenever one exists (property)', () => {
     fc.assert(
-      fc.property(arbBoard, fc.nat(2 ** 31), fc.nat(4000), (board, seed, score) => {
-        expect(difficultyFor(score)).toBeLessThan(ASSIST_HAND_FROM);
+      fc.property(arbBoard, fc.nat(2 ** 31), fc.nat(30), (board, seed, linesCleared) => {
+        expect(difficultyFor(linesCleared)).toBeLessThan(ASSIST_HAND_FROM);
         const rows = rowsFromBoard(board);
         const { shapes, info } = new Generator(new Mulberry32(seed).next, SHAPES, assistOn).deal(
           rows,
-          { score, handsWithoutClear: 0 },
+          { linesCleared, handsWithoutClear: 0 },
         );
         const weights = shapeWeights(info.difficulty);
         const possible = SHAPES.some((s, i) => weights[i]! > 0 && completesALine(rows, s));
@@ -321,7 +321,7 @@ describe('assist', () => {
         const rows = rowsFromBoard(board);
         const { shapes, info } = new Generator(new Mulberry32(seed).next, SHAPES, assistOn).deal(
           rows,
-          { score: HARD, handsWithoutClear: 0 },
+          { linesCleared: HARD, handsWithoutClear: 0 },
         );
         const goal = { placeAll: info.requireSolvable, clear: true };
         if (info.assistMode === 'hand') {
@@ -345,7 +345,7 @@ describe('assist', () => {
     const g = new Generator(new Mulberry32(5).next, SHAPES, assistOn);
     const modes = Array.from(
       { length: 200 },
-      () => g.deal(nearLine, { score: HARD, handsWithoutClear: 0 }).info.assistMode,
+      () => g.deal(nearLine, { linesCleared: HARD, handsWithoutClear: 0 }).info.assistMode,
     );
     expect(modes.filter((m) => m === 'hand').length).toBeGreaterThan(150);
     expect(modes.every((m) => m === 'hand' || m === 'pieceFallback')).toBe(true);
@@ -354,8 +354,8 @@ describe('assist', () => {
   it('never helps when the roll misses', () => {
     const g = new Generator(new Mulberry32(6).next, SHAPES, assistOff);
     for (let i = 0; i < 50; i++) {
-      for (const score of [0, HARD]) {
-        expect(g.deal(nearLine, { score, handsWithoutClear: 0 }).info).toMatchObject({
+      for (const linesCleared of [0, HARD]) {
+        expect(g.deal(nearLine, { linesCleared, handsWithoutClear: 0 }).info).toMatchObject({
           assist: false,
           assistMode: 'none',
           assistP: 0,
@@ -413,11 +413,11 @@ describe('assist', () => {
 
   it('reports the chance and its reason from the deal context', () => {
     const { info } = new Generator(new Mulberry32(1).next).deal(nearLine, {
-      score: HARD,
+      linesCleared: HARD,
       handsWithoutClear: 0,
       combo: 2,
     });
-    expect(info.assistP).toBeCloseTo(0.45);
+    expect(info.assistP).toBeCloseTo(0.65);
     expect(info.assistReason).toBe('combo');
   });
 
@@ -425,8 +425,8 @@ describe('assist', () => {
     const g = new Generator(new Mulberry32(11).next);
     const deals = Array.from({ length: 1000 }, () => g.deal(nearLine, ctx).info);
     const hit = deals.filter((d) => d.assist).length;
-    expect(hit).toBeGreaterThan(550); // expected 600 at difficulty 0
-    expect(hit).toBeLessThan(650);
+    expect(hit).toBeGreaterThan(650); // expected 700 at difficulty 0
+    expect(hit).toBeLessThan(750);
     expect(deals.filter((d) => d.assist).every((d) => d.assistMode === 'piece')).toBe(true);
   });
 });
