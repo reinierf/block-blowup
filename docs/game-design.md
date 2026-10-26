@@ -294,8 +294,10 @@ that matters — if two of your three pieces still fit, you keep playing.
   on the game area are (`touch-action: none`, no overscroll, no selection, no long-press
   menu).
 - **Score:** large (62 px, Nunito Bold, bundled in `public/fonts/` for offline use), centred horizontally on the board and vertically 0.8 × its
-  font size below the midpoint between the viewport top and the board; counts up to the
-  new value in about 0.4 s.
+  font size below the midpoint between the viewport top and the board. After a move it
+  counts up the placement points one at a time (0.04 s each), pauses 0.3 s, then counts
+  up the clear points (lines, combo, all-clear) in about 0.4 s; a new move finishes the
+  previous count at once (`src/feedback/score-count.ts`).
 - **HUD:** best score at the top left (31 px Nunito Bold with the score's shadow, a gold crown, no label), a combo badge (from
   combo 2) in the middle, and a settings gear (38 px) at the top right. Left of the gear, a
   fullscreen toggle (30 px, `src/fullscreen.ts`), shown only in a browser tab where the
@@ -445,6 +447,7 @@ missing, blocked or corrupt data falls back to "nothing saved".
 | `src/game/save.ts`            | Save / validate / restore a game in progress                            |
 | `src/settings.ts`             | Settings (mute, haptics, reduced motion)                                |
 | `src/feedback/plan.ts`        | Turn result → feedback plan                                             |
+| `src/feedback/score-count.ts` | HUD score count-up: placement points, pause, clear points               |
 | `src/audio.ts`                | Synthesised sound effects                                               |
 | `src/haptics.ts`              | Vibration                                                               |
 | `src/pwa.ts`                  | Service worker registration and update prompt                           |

@@ -104,6 +104,7 @@ first New game/Continue. E2E helpers (`openGame`, `continueGame`) wait for that.
 | `src/feedback/plan.ts`         | Turn result → feedback plan (pure)                  |
 | `src/feedback/particles.ts`    | Particle spawn points and directions (pure)         |
 | `src/feedback/game-over.ts`    | Game-over sequence timeline (pure)                  |
+| `src/feedback/score-count.ts`  | HUD score count-up: placement, pause, clear (pure)  |
 | `src/game/save.ts`             | Save / validate / restore a game in progress        |
 | `src/pwa.ts`                   | Service worker registration, update prompt          |
 | `src/audio.ts`                 | Synthesised Web Audio sound effects                 |

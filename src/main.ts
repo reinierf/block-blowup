@@ -4,6 +4,8 @@
 
 import { AudioManager } from './audio';
 import { FEEDBACK, feedbackFor, type FeedbackPlan } from './feedback/plan';
+import { ScoreCounter } from './feedback/score-count';
+import { PLACE_POINTS_PER_CELL } from './game/config';
 import { difficultyFor } from './game/difficulty';
 import { Mulberry32 } from './game/rng';
 import { hasProgress, restoreGame, saveGame, type SavedGame } from './game/save';
@@ -106,8 +108,8 @@ let layout: Layout | null = null;
 let highScore = loadHighScore();
 /** The best score when this game started, for "New best!". */
 let bestAtStart = highScore;
-/** Score shown in the HUD; counts up towards game.score. */
-let shownScore = 0;
+/** Score shown in the HUD: counts up placement points, then clear points. */
+const scoreCount = new ScoreCounter();
 let lastFeedback: FeedbackPlan | null = null;
 let seed = 0;
 let random = new Mulberry32(0);
@@ -135,7 +137,7 @@ function afterGameChange(): void {
   renderer?.clearEffects();
   lastFeedback = null;
   bestAtStart = highScore;
-  shownScore = game.score;
+  scoreCount.reset(game.score);
   showScore();
   persist();
   updateHud();
@@ -221,6 +223,7 @@ function resize(): void {
 function handlePlace(result: TurnResult): void {
   const plan = feedbackFor(result, { reduceMotion: reduceMotion(settings, motionQuery.matches) });
   lastFeedback = plan;
+  scoreCount.add(result.placedCells.length * PLACE_POINTS_PER_CELL, result.points);
   renderer!.playEffects(result, plan);
   for (const cue of plan.sounds) audio.play(cue);
   if (plan.haptic !== null) haptics.vibrate(plan.haptic);
@@ -250,21 +253,14 @@ function updateHud(): void {
   comboEl.textContent = `Combo ${game.combo}`;
 }
 
-/** Count the HUD score up towards the real score (about 0.4 s for any jump). */
+/** Count the HUD score up after a move (feedback/score-count.ts). */
 function tickScore(dt: number): void {
-  if (shownScore === game.score) return;
-  if (freezeAnimations || shownScore > game.score) {
-    shownScore = game.score;
-  } else {
-    const step = Math.max(1, Math.ceil((game.score - shownScore) * Math.min(1, dt * 8)));
-    shownScore = Math.min(game.score, shownScore + step);
-  }
-  showScore();
+  if (freezeAnimations ? scoreCount.skip() : scoreCount.tick(dt)) showScore();
 }
 
 /** Show the score, shrunk if needed so it stays between the HUD and the board. */
 function showScore(): void {
-  const text = String(shownScore);
+  const text = String(scoreCount.shown);
   if (scoreEl.textContent !== text) scoreEl.textContent = text;
   if (!layout) return;
   // offsetWidth/Height ignore transforms: the unscaled size, including any text scaling.
